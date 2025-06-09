@@ -5,6 +5,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 ## 🔧 Features
 
 - Detects meetings from your **Google Calendar** in **Week View**
+- Works with Google Calendar interfaces in **English** or **French**
 - Allows you to assign each meeting to a **project**
 - **Auto-links** recurring meetings to their projects using custom keywords
 - **Color-code** each project for clarity
