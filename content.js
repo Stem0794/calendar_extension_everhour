@@ -12,7 +12,7 @@ function parseEventsFromWeekView() {
     const info = chip.querySelector('.XuJrye');
     if (!info) return;
     const text = info.textContent.trim();
-    const match = text.match(/(?:[Dd]e)?\s*(\d{1,2}:\d{2})\s*à\s*(\d{1,2}:\d{2}),\s*([^,]+)/);
+    const match = text.match(/(?:from|de)?\s*(\d{1,2}(?::\d{2})?\s*(?:[ap]m)?)\s*(?:à|to|[-–])\s*(\d{1,2}(?::\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
     if (!match) return;
     const [, start, end, title] = match;
 
@@ -20,11 +20,21 @@ function parseEventsFromWeekView() {
     let date = '';
     let dayOfWeek = '';
     let dayName = '';
-    const dateMatch = text.match(/(\d{1,2})\s+([a-zéû]+)[,\s]*(\d{4})?/i);
+    let dateMatch = text.match(/(\d{1,2})\s+([a-zéû]+)[,\s]*(\d{4})?/i);
+    if (!dateMatch) {
+      dateMatch = text.match(/([a-zéû]+)\s+(\d{1,2})(?:[,\s]*(\d{4}))?/i);
+    }
     if (dateMatch) {
-      let day = dateMatch[1].padStart(2, '0');
-      let month = dateMatch[2].toLowerCase();
-      let year = dateMatch[3] || new Date().getFullYear();
+      let day, month, year;
+      if (/^\d/.test(dateMatch[1])) {
+        day = dateMatch[1].padStart(2, '0');
+        month = dateMatch[2].toLowerCase();
+        year = dateMatch[3] || new Date().getFullYear();
+      } else {
+        month = dateMatch[1].toLowerCase();
+        day = dateMatch[2].padStart(2, '0');
+        year = dateMatch[3] || new Date().getFullYear();
+      }
       let monthIdx = months.indexOf(month) % 12 + 1;
       monthIdx = monthIdx < 10 ? '0' + monthIdx : '' + monthIdx;
       date = `${year}-${monthIdx}-${day}`;
@@ -40,9 +50,17 @@ function parseEventsFromWeekView() {
       lowerTitle.includes('break') ||
       lowerTitle.includes('pause')
     ) return;
-    function toMinutes(hm) {
-      const [h, m] = hm.split(':').map(Number);
-      return h * 60 + m;
+    function toMinutes(str) {
+      const m = str.trim().toLowerCase().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+      if (!m) return 0;
+      let h = +m[1];
+      const mins = m[2] ? +m[2] : 0;
+      const ap = m[3];
+      if (ap) {
+        if (ap === 'pm' && h !== 12) h += 12;
+        if (ap === 'am' && h === 12) h = 0;
+      }
+      return h * 60 + mins;
     }
     const duration = toMinutes(end) - toMinutes(start);
     parsed.push({ title: title.trim(), duration, date, dayOfWeek, dayName });
