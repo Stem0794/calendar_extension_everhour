@@ -14,7 +14,7 @@ function parseEventsFromWeekView() {
     const text = info.textContent.trim();
     const match = text.match(/(?:from|de)?\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?)\s*(?:à|to|[-–])\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
     if (!match) return;
-    const [, start, end, title] = match;
+    const [, start, end, rawTitle] = match;
 
     // Extract date (robust for EN/FR)
     let date = '';
@@ -42,7 +42,8 @@ function parseEventsFromWeekView() {
       dayOfWeek = d.getDay();
       dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
     }
-    const lowerTitle = title.trim().toLowerCase();
+    const cleanTitle = rawTitle.replace(/\s*•.*$/, '').split('\n')[0].trim();
+    const lowerTitle = cleanTitle.toLowerCase();
     if (
       lowerTitle.includes('planning de rendez-vous') ||
       lowerTitle.includes('lunch') ||
@@ -64,7 +65,7 @@ function parseEventsFromWeekView() {
     }
     let duration = toMinutes(end) - toMinutes(start);
     if (duration < 0) duration += 24 * 60; // handle overnight meetings
-    parsed.push({ title: title.trim(), duration, date, dayOfWeek, dayName });
+    parsed.push({ title: cleanTitle, duration, date, dayOfWeek, dayName });
   });
   return parsed;
 }
