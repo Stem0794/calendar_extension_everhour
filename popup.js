@@ -12,6 +12,15 @@ function quoteField(value) {
   return str;
 }
 
+// Convert HEX color to rgba with given alpha
+function addAlpha(hex, alpha) {
+  if (!hex) return '';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // --- ONBOARDING ---
 async function maybeShowOnboarding() {
   const { onboarded } = await chrome.storage.local.get("onboarded");
@@ -221,13 +230,11 @@ async function loadSummary() {
             map[title] = sel.value;
             await setMeetingToProjectMap(map);
           };
-          // Dot
-          let dot = '';
           if (assignedProject) {
             const proj = projects.find(p => p.name === assignedProject);
-            if (proj) dot = `<span class="color-dot" style="background:${proj.color};"></span>`;
+            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
           }
-          tr.innerHTML = `<td>${dot}${title}</td><td>${hours}</td>`;
+          tr.innerHTML = `<td>${title}</td><td>${hours}</td>`;
           const td = document.createElement('td');
           td.appendChild(sel);
           tr.appendChild(td);
@@ -301,13 +308,11 @@ async function loadSummary() {
             map[title] = sel.value;
             await setMeetingToProjectMap(map);
           };
-          // Dot
-          let dot = '';
           if (assignedProject) {
             const proj = projects.find(p => p.name === assignedProject);
-            if (proj) dot = `<span class="color-dot" style="background:${proj.color};"></span>`;
+            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
           }
-          tr.innerHTML = `<td>${dot}${title}</td><td>${hours}</td>`;
+          tr.innerHTML = `<td>${title}</td><td>${hours}</td>`;
           const td = document.createElement('td');
           td.appendChild(sel);
           tr.appendChild(td);
@@ -369,10 +374,9 @@ async function loadProjectHours() {
         table.appendChild(header);
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
-          let dot = '';
           const proj = projects.find(p => p.name === project);
-          if (proj) dot = `<span class="color-dot" style="background:${proj.color};"></span>`;
-          tr.innerHTML = `<td>${dot}${project}</td><td>${hours}</td>`;
+          if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+          tr.innerHTML = `<td>${project}</td><td>${hours}</td>`;
           table.appendChild(tr);
         }
         container.appendChild(table);
@@ -421,10 +425,9 @@ async function loadProjectHours() {
         table.appendChild(header);
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
-          let dot = '';
           const proj = projects.find(p => p.name === project);
-          if (proj) dot = `<span class="color-dot" style="background:${proj.color};"></span>`;
-          tr.innerHTML = `<td>${dot}${project}</td><td>${hours}</td>`;
+          if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+          tr.innerHTML = `<td>${project}</td><td>${hours}</td>`;
           table.appendChild(tr);
         }
         container.appendChild(table);
