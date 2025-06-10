@@ -97,6 +97,9 @@ async function renderProjectList() {
       });
       await storage.set({ meetingProjectMap });
       renderProjectList();
+      // Refresh other tabs after renaming
+      loadSummary();
+      loadProjectHours();
     }
   });
   list.querySelectorAll('.delete-btn').forEach(btn => {
