@@ -3,6 +3,15 @@ const DAYS_EN = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 const DAYS_LABEL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const JS_DAY_IDX = {monday:1, tuesday:2, wednesday:3, thursday:4, friday:5};
 
+// Quote CSV field per RFC4180
+function quoteField(value) {
+  const str = String(value ?? '');
+  if (/[",\n]/.test(str)) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
 // --- ONBOARDING ---
 async function maybeShowOnboarding() {
   const { onboarded } = await chrome.storage.local.get("onboarded");
@@ -231,7 +240,9 @@ async function loadSummary() {
             const hours = Math.round((mins / 60) * 100) / 100;
             csvRows.push([title, hours, map[title] || '']);
           }
-          const csv = csvRows.map(r => r.join(',')).join('\n');
+          const csv = csvRows
+            .map(r => r.map(quoteField).join(','))
+            .join('\r\n');
           const blob = new Blob([csv], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -308,7 +319,9 @@ async function loadSummary() {
             const hours = Math.round((mins / 60) * 100) / 100;
             csvRows.push([title, hours, map[title] || '']);
           }
-          const csv = csvRows.map(r => r.join(',')).join('\n');
+          const csv = csvRows
+            .map(r => r.map(quoteField).join(','))
+            .join('\r\n');
           const blob = new Blob([csv], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -366,7 +379,9 @@ async function loadProjectHours() {
           for (let [project, hours] of rows) {
             csvRows.push([project, hours]);
           }
-          const csv = csvRows.map(r => r.join(',')).join('\n');
+          const csv = csvRows
+            .map(r => r.map(quoteField).join(','))
+            .join('\r\n');
           const blob = new Blob([csv], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -416,7 +431,9 @@ async function loadProjectHours() {
           for (let [project, hours] of rows) {
             csvRows.push([project, hours]);
           }
-          const csv = csvRows.map(r => r.join(',')).join('\n');
+          const csv = csvRows
+            .map(r => r.map(quoteField).join(','))
+            .join('\r\n');
           const blob = new Blob([csv], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
