@@ -62,7 +62,8 @@ function parseEventsFromWeekView() {
       }
       return h * 60 + mins;
     }
-    const duration = toMinutes(end) - toMinutes(start);
+    let duration = toMinutes(end) - toMinutes(start);
+    if (duration < 0) duration += 24 * 60; // handle overnight meetings
     parsed.push({ title: title.trim(), duration, date, dayOfWeek, dayName });
   });
   return parsed;
