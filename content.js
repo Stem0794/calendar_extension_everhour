@@ -12,7 +12,7 @@ function parseEventsFromWeekView() {
     const info = chip.querySelector('.XuJrye');
     if (!info) return;
     const text = info.textContent.trim();
-    const match = text.match(/(?:from|de)?\s*(\d{1,2}(?::\d{2})?\s*(?:[ap]m)?)\s*(?:à|to|[-–])\s*(\d{1,2}(?::\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
+    const match = text.match(/(?:from|de)?\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?)\s*(?:à|to|[-–])\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
     if (!match) return;
     const [, start, end, title] = match;
 
@@ -51,7 +51,7 @@ function parseEventsFromWeekView() {
       lowerTitle.includes('pause')
     ) return;
     function toMinutes(str) {
-      const m = str.trim().toLowerCase().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+      const m = str.trim().toLowerCase().match(/(\d{1,2})(?:(?:\:|\s*h\s*)(\d{2}))?\s*(am|pm)?/);
       if (!m) return 0;
       let h = +m[1];
       const mins = m[2] ? +m[2] : 0;
