@@ -194,6 +194,7 @@ async function loadSummary() {
           .map(([title, mins]) => [title, mins])
           .sort((a, b) => b[1] - a[1]);
         const table = document.createElement('table');
+        table.className = 'summary-table';
         const header = document.createElement('tr');
         header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th>";
         table.appendChild(header);
@@ -274,6 +275,7 @@ async function loadSummary() {
         label.textContent = DAYS_LABEL[DAYS_EN.indexOf(filter)];
         container.appendChild(label);
         const table = document.createElement('table');
+        table.className = 'summary-table';
         const header = document.createElement('tr');
         header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th>";
         table.appendChild(header);

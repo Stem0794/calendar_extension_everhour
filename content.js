@@ -7,6 +7,10 @@ function parseEventsFromWeekView() {
     "janvier","février","mars","avril","mai","juin","juillet",
     "août","septembre","octobre","novembre","décembre"
   ];
+  const monthOnlyRegex = new RegExp(
+    `^(?:${months.join('|')})(?:\\s+\\d{4})?$`,
+    'i'
+  );
 
   chips.forEach(chip => {
     const info = chip.querySelector('.XuJrye');
@@ -49,6 +53,7 @@ function parseEventsFromWeekView() {
     }
     const lowerTitle = cleanTitle.toLowerCase();
     if (
+      monthOnlyRegex.test(lowerTitle) ||
       lowerTitle.includes('planning de rendez-vous') ||
       lowerTitle.includes('lunch') ||
       lowerTitle.includes('déjeuner') ||
