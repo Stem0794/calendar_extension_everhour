@@ -42,7 +42,11 @@ function parseEventsFromWeekView() {
       dayOfWeek = d.getDay();
       dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
     }
-    const cleanTitle = rawTitle.replace(/\s*•.*$/, '').split('\n')[0].trim();
+    let cleanTitle = rawTitle.replace(/\s*•.*$/, '').split('\n')[0].trim();
+    const commaIdx = cleanTitle.indexOf(',');
+    if (commaIdx !== -1) {
+      cleanTitle = cleanTitle.slice(0, commaIdx).trim();
+    }
     const lowerTitle = cleanTitle.toLowerCase();
     if (
       lowerTitle.includes('planning de rendez-vous') ||
