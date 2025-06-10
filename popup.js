@@ -86,16 +86,27 @@ async function renderProjectList() {
       const color = document.getElementById(`edit-color-${idx}`).value;
       const keywords = document.getElementById(`edit-keywords-${idx}`).value.split(',').map(k=>k.trim()).filter(Boolean);
       let { projects = [] } = await storage.get('projects');
-      // Rename in mapping as well
+      // Validation
+      if (!name) {
+        alert('Project name cannot be empty');
+        return;
+      }
+      const nameLower = name.toLowerCase();
+      if (projects.some((p,i) => i !== idx && p.name.toLowerCase() === nameLower)) {
+        alert('A project with this name already exists');
+        return;
+      }
       const oldName = projects[idx].name;
       projects[idx] = { name, color, keywords, _edit: false };
       await storage.set({ projects });
-      // Also update mapping for meetings previously linked to oldName
+      // Update mapping for meetings previously linked to oldName
       let { meetingProjectMap={} } = await storage.get('meetingProjectMap');
-      Object.keys(meetingProjectMap).forEach(tit => {
-        if (meetingProjectMap[tit] === oldName) meetingProjectMap[tit] = name;
-      });
-      await storage.set({ meetingProjectMap });
+      if (name !== oldName) {
+        Object.keys(meetingProjectMap).forEach(tit => {
+          if (meetingProjectMap[tit] === oldName) meetingProjectMap[tit] = name;
+        });
+        await storage.set({ meetingProjectMap });
+      }
       renderProjectList();
     }
   });
