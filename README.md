@@ -11,6 +11,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 - **Color-code** each project for clarity
 - Shows total hours per **project**, per **day**, or **per week**
 - Export summaries as **CSV** files (per week, per day, or across weeks)
+- Quickly send a meeting's time to **Everhour**
 - Simple **onboarding tooltip** to get started
 - Modern, clean UI
 
@@ -21,6 +22,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 3. Use the **Summary** tab to assign meetings to projects
 4. View project totals in the **Project Hours** tab
 5. Export your data if needed for reporting
+6. In the **Projects** tab, enter your Everhour API token and each project's task ID
 
 > Tip: Add custom **keywords** when creating projects to auto-link new meetings in future weeks.
 
@@ -48,6 +50,13 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 
 - Must be used on the **Google Calendar web app**
 - Must be in **Week View** for detection to work
+
+## 🔑 Everhour Setup
+
+1. Open the **Projects** tab of the popup.
+2. Enter your Everhour API token in the settings field and click **Save**.
+3. For each project, provide the Everhour task ID so time can be logged.
+4. Use the **Add to Everhour** button next to a meeting to log its time via Everhour's `/tasks/{id}/time` endpoint.
 
 ## 👤 Author
 GitHub: [@Stem0794](https://github.com/Stem0794)

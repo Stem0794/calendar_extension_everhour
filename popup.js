@@ -57,6 +57,24 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
+// --- TOKEN SETTINGS ---
+async function loadEverhourToken() {
+  const { everhourToken = '' } = await storage.get('everhourToken');
+  const inp = document.getElementById('everhour-token');
+  if (inp) inp.value = everhourToken;
+}
+async function saveEverhourToken() {
+  const token = document.getElementById('everhour-token').value.trim();
+  await storage.set({ everhourToken: token });
+  const status = document.getElementById('token-status');
+  if (status) {
+    status.textContent = 'Saved!';
+    setTimeout(() => { status.textContent = ''; }, 1500);
+  }
+}
+document.getElementById('save-token').onclick = saveEverhourToken;
+loadEverhourToken();
+
 // --- PROJECTS CRUD ---
 async function renderProjectList() {
   const { projects = [] } = await storage.get('projects');
@@ -71,10 +89,12 @@ async function renderProjectList() {
       li.innerHTML = `${dot}<input type="text" class="rename-input" value="${proj.name}" id="rename-proj-${idx}"/>`
       + `<input type="color" id="edit-color-${idx}" value="${proj.color||'#42a5f5'}" style="margin-left:6px;width:32px;"/>`
       + `<input type="text" class="keyword-input" value="${(proj.keywords||[]).join(', ')}" id="edit-keywords-${idx}" placeholder="Keywords"/>`
+      + `<input type="text" class="task-input" value="${proj.taskId||''}" id="edit-task-${idx}" placeholder="Task ID"/>`
       + `<button class="save-btn" data-idx="${idx}">Save</button><button class="cancel-btn" data-idx="${idx}">Cancel</button>`;
     } else {
       li.innerHTML = `${dot}<span>${proj.name}</span>`
         + `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">[${(proj.keywords||[]).join(', ')}]</span>`
+        + (proj.taskId ? `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">(${proj.taskId})</span>` : '')
         + `<button class="edit-btn" data-idx="${idx}">Edit</button>`
         + `<button class="delete-btn" data-idx="${idx}" title="Delete">Delete</button>`;
     }
@@ -103,6 +123,7 @@ async function renderProjectList() {
       const name = document.getElementById(`rename-proj-${idx}`).value.trim();
       const color = document.getElementById(`edit-color-${idx}`).value;
       const keywords = document.getElementById(`edit-keywords-${idx}`).value.split(',').map(k=>k.trim()).filter(Boolean);
+      const taskId = document.getElementById(`edit-task-${idx}`).value.trim();
       let { projects = [] } = await storage.get('projects');
       // Validation
       if (!name) {
@@ -115,7 +136,7 @@ async function renderProjectList() {
         return;
       }
       const oldName = projects[idx].name;
-      projects[idx] = { name, color, keywords, _edit: false };
+      projects[idx] = { name, color, keywords, taskId, _edit: false };
       await storage.set({ projects });
       // Update mapping for meetings previously linked to oldName
       let { meetingProjectMap={} } = await storage.get('meetingProjectMap');
@@ -154,16 +175,18 @@ document.getElementById('add-project').onclick = async () => {
   const inp = document.getElementById('new-project');
   const color = document.getElementById('new-project-color').value || '#42a5f5';
   const kwds = document.getElementById('new-project-keywords').value.split(',').map(k=>k.trim()).filter(Boolean);
+  const taskId = document.getElementById('new-project-task').value.trim();
   const name = inp.value.trim();
   if (!name) return;
   let { projects = [] } = await storage.get('projects');
   if (!projects.find(p=>p.name===name)) {
-    projects.push({ name, color, keywords: kwds });
+    projects.push({ name, color, keywords: kwds, taskId });
     await storage.set({ projects });
     renderProjectList();
   }
   inp.value = '';
   document.getElementById('new-project-keywords').value = '';
+  document.getElementById('new-project-task').value = '';
 };
 
 // --- PROJECT MAP ---
@@ -172,6 +195,48 @@ async function getMeetingToProjectMap() {
 }
 async function setMeetingToProjectMap(map) {
   await storage.set({ meetingProjectMap: map });
+}
+
+// --- EVERHOUR INTEGRATION ---
+async function sendToEverhour(title, mins, assignedProject, eventsArr, btn) {
+  const { everhourToken = '' } = await storage.get('everhourToken');
+  if (!everhourToken) {
+    alert('Please set your Everhour token');
+    return;
+  }
+  if (!assignedProject) {
+    alert('Select a project for this meeting');
+    return;
+  }
+  const { projects = [] } = await storage.get('projects');
+  const taskId = projects.find(p => p.name === assignedProject)?.taskId;
+  if (!taskId) {
+    alert('Project is missing Everhour task ID');
+    return;
+  }
+  const event = Array.isArray(eventsArr) ? eventsArr.find(ev => ev.title === title) : null;
+  const date = event ? event.date : new Date().toISOString().slice(0,10);
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  try {
+    const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': everhourToken
+      },
+      body: JSON.stringify({ date, time: Math.round(mins * 60) })
+    });
+    if (res.ok) {
+      btn.textContent = 'Added!';
+    } else {
+      btn.textContent = 'Error';
+    }
+  } catch (e) {
+    console.error(e);
+    btn.textContent = 'Error';
+  }
+  setTimeout(() => { btn.textContent = 'Add to Everhour'; btn.disabled = false; }, 2000);
 }
 
 // --- SUMMARY TAB ---
@@ -205,7 +270,7 @@ async function loadSummary() {
         const table = document.createElement('table');
         table.className = 'summary-table';
         const header = document.createElement('tr');
-        header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th>";
+        header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th><th></th>";
         table.appendChild(header);
         for (let [title, mins] of rows) {
           const tr = document.createElement('tr');
@@ -238,6 +303,13 @@ async function loadSummary() {
           const td = document.createElement('td');
           td.appendChild(sel);
           tr.appendChild(td);
+          const addTd = document.createElement('td');
+          const addBtn = document.createElement('button');
+          addBtn.textContent = 'Add to Everhour';
+          addBtn.style.marginTop = '0';
+          addBtn.onclick = () => sendToEverhour(title, mins, assignedProject, events, addBtn);
+          addTd.appendChild(addBtn);
+          tr.appendChild(addTd);
           table.appendChild(tr);
         }
         container.appendChild(table);
@@ -284,7 +356,7 @@ async function loadSummary() {
         const table = document.createElement('table');
         table.className = 'summary-table';
         const header = document.createElement('tr');
-        header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th>";
+        header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th><th></th>";
         table.appendChild(header);
         for (let [title, mins] of rows) {
           const tr = document.createElement('tr');
@@ -316,6 +388,13 @@ async function loadSummary() {
           const td = document.createElement('td');
           td.appendChild(sel);
           tr.appendChild(td);
+          const addTd = document.createElement('td');
+          const addBtn = document.createElement('button');
+          addBtn.textContent = 'Add to Everhour';
+          addBtn.style.marginTop = '0';
+          addBtn.onclick = () => sendToEverhour(title, mins, assignedProject, filteredEvents, addBtn);
+          addTd.appendChild(addBtn);
+          tr.appendChild(addTd);
           table.appendChild(tr);
         }
         container.appendChild(table);
