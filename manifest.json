@@ -4,7 +4,7 @@
   "version": "2.2",
   "description": "Track, color-code, and export your Google Calendar meetings and project hours by week or day.",
   "permissions": ["activeTab", "storage"],
-  "host_permissions": ["https://api.everhour.com/*"],
+  "host_permissions": ["https://api.everhour.com/tasks/*/time"],
   "permissions": ["activeTab", "storage", "https://api.everhour.com/*"],
   "action": {
     "default_popup": "popup.html",
