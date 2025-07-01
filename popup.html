@@ -19,14 +19,13 @@
     table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fafbfc; margin-top: 12px; box-shadow: 0 1px 2px #e1e4ea44; border-radius: 8px; overflow: hidden; }
     .summary-table { table-layout: fixed; overflow: visible; }
     .summary-table th:first-child,
-    .summary-table td:first-child { width: 55%; word-break: break-word; }
+    .summary-table td:first-child { width: 50%; word-break: break-word; }
     .summary-table th:nth-child(2),
     .summary-table td:nth-child(2) { width: 15%; }
-    .summary-table th:last-child,
-    .summary-table td:last-child { width: 30%; }
-    .summary-table td:first-child { width: 60%; word-break: break-word; }
-    .summary-table th:last-child,
-    .summary-table td:last-child { width: 35%; }
+    .summary-table th:nth-child(3),
+    .summary-table td:nth-child(3) { width: 25%; }
+    .summary-table th:nth-child(4),
+    .summary-table td:nth-child(4) { width: 10%; }
     .summary-table select { min-width: 100px; width: 100%; }
     th { background: #eef3f9; color: #444; font-weight: 500; font-size: 14px; border-bottom: 1px solid #e6eaf2; padding: 9px 8px; text-align: left; }
     td { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #222; vertical-align: middle; }
@@ -48,6 +47,7 @@
     .color-dot { display:inline-block; width:13px; height:13px; border-radius:50%; margin-right:6px; border: 1px solid #d1d3e0; vertical-align:middle; }
     .keyword-input { width:110px; margin-left: 4px;}
     .rename-input { width:95px; margin-right: 4px;}
+    .task-input { width:90px; margin-left: 4px; }
     .onboarding-tip { background: #e3edfa; color: #294365; font-size: 14px; padding: 10px 14px; border-radius: 7px; margin-bottom: 13px; border: 1px solid #aac7e6; }
     .edit-btn, .save-btn, .cancel-btn { margin-left: 6px; font-size:12px; padding:3px 7px;}
   </style>
@@ -84,9 +84,16 @@
       <input type="text" id="new-project" placeholder="New project name" autocomplete="off"/>
       <input type="color" id="new-project-color" value="#42a5f5" title="Project color"/>
       <input type="text" id="new-project-keywords" placeholder="Keywords, comma-separated" class="keyword-input" autocomplete="off"/>
+      <input type="text" id="new-project-task" placeholder="Task ID" class="task-input" autocomplete="off"/>
       <button id="add-project">Add</button>
     </div>
     <ul id="project-list"></ul>
+    <div style="margin-top:16px;">
+      <label for="everhour-token" style="font-size:13px;">Everhour API Token:</label>
+      <input type="text" id="everhour-token" placeholder="Token" class="task-input" autocomplete="off"/>
+      <button id="save-token">Save</button>
+      <span id="token-status" style="font-size:12px;margin-left:6px;"></span>
+    </div>
   </div>
 
   <div id="hours" class="tab-content">
