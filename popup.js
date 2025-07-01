@@ -219,6 +219,7 @@ async function sendToEverhour(title, mins, assignedProject, eventsArr, btn) {
   btn.disabled = true;
   btn.textContent = 'Sending...';
   try {
+    const res = await fetch('https://api.everhour.com/time', {
     const res = await fetch('https://api.everhour.com/time/', {
       method: 'POST',
       headers: {
