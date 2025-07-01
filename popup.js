@@ -219,13 +219,14 @@ async function sendToEverhour(title, mins, assignedProject, eventsArr, btn) {
   btn.disabled = true;
   btn.textContent = 'Sending...';
   try {
-    const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
+    const res = await fetch('https://api.everhour.com/tasks/${taskId}/time', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Api-Key': everhourToken
       },
       body: JSON.stringify({ date, time: Math.round(mins * 60) })
+      body: JSON.stringify({ task: taskId, date, time: Math.round(mins * 60) })
     });
     if (res.ok) {
       btn.textContent = 'Added!';
