@@ -198,7 +198,7 @@ async function setMeetingToProjectMap(map) {
 }
 
 // --- EVERHOUR INTEGRATION ---
-async function sendToEverhour(title, mins, assignedProject, eventsArr, btn) {
+async function sendToEverhour(title, eventsArr, assignedProject, btn) {
   const { everhourToken = '' } = await storage.get('everhourToken');
   if (!everhourToken) {
     alert('Please set your Everhour token');
@@ -214,33 +214,43 @@ async function sendToEverhour(title, mins, assignedProject, eventsArr, btn) {
     alert('Project is missing Everhour task ID');
     return;
   }
-  const event = Array.isArray(eventsArr) ? eventsArr.find(ev => ev.title === title) : null;
-  const date = event ? event.date : new Date().toISOString().slice(0,10);
+  const eventsToSend = Array.isArray(eventsArr)
+    ? eventsArr.filter(ev => ev.title === title)
+    : [];
+  if (!eventsToSend.length) {
+    alert('Could not find event details');
+    return;
+  }
   btn.disabled = true;
   btn.textContent = 'Sending...';
   try {
-    const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': everhourToken
-      },
-      body: JSON.stringify({
-        task: taskId,
-        date,
-        time: Math.round(mins * 60)
-      })
-    });
-    if (res.ok) {
-      btn.textContent = 'Added!';
-    } else {
-      btn.textContent = 'Error';
+    for (const ev of eventsToSend) {
+      const { date, duration } = ev;
+      const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': everhourToken
+        },
+        body: JSON.stringify({
+          task: taskId,
+          date,
+          time: Math.round(duration * 60)
+        })
+      });
+      if (!res.ok) {
+        throw new Error('Request failed');
+      }
     }
+    btn.textContent = 'Added!';
   } catch (e) {
     console.error(e);
     btn.textContent = 'Error';
   }
-  setTimeout(() => { btn.textContent = 'Add to Everhour'; btn.disabled = false; }, 2000);
+  setTimeout(() => {
+    btn.textContent = 'Add to Everhour';
+    btn.disabled = false;
+  }, 2000);
 }
 
 // --- SUMMARY TAB ---
@@ -311,7 +321,8 @@ async function loadSummary() {
           const addBtn = document.createElement('button');
           addBtn.textContent = 'Add to Everhour';
           addBtn.style.marginTop = '0';
-          addBtn.onclick = () => sendToEverhour(title, mins, assignedProject, events, addBtn);
+          const titleEvents = events.filter(ev => ev.title === title);
+          addBtn.onclick = () => sendToEverhour(title, titleEvents, assignedProject, addBtn);
           addTd.appendChild(addBtn);
           tr.appendChild(addTd);
           table.appendChild(tr);
@@ -396,7 +407,8 @@ async function loadSummary() {
           const addBtn = document.createElement('button');
           addBtn.textContent = 'Add to Everhour';
           addBtn.style.marginTop = '0';
-          addBtn.onclick = () => sendToEverhour(title, mins, assignedProject, filteredEvents, addBtn);
+          const titleEvents = filteredEvents.filter(ev => ev.title === title);
+          addBtn.onclick = () => sendToEverhour(title, titleEvents, assignedProject, addBtn);
           addTd.appendChild(addBtn);
           tr.appendChild(addTd);
           table.appendChild(tr);
