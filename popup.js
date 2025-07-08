@@ -248,7 +248,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
     btn.textContent = 'Error';
   }
   setTimeout(() => {
-    btn.textContent = 'Add to Everhour';
+    btn.textContent = '+';
     btn.disabled = false;
   }, 2000);
 }
@@ -319,7 +319,9 @@ async function loadSummary() {
           tr.appendChild(td);
           const addTd = document.createElement('td');
           const addBtn = document.createElement('button');
-          addBtn.textContent = 'Add to Everhour';
+          addBtn.className = 'everhour-btn';
+          addBtn.textContent = '+';
+          addBtn.title = 'Add to Everhour';
           addBtn.style.marginTop = '0';
           const titleEvents = events.filter(ev => ev.title === title);
           addBtn.onclick = () => sendToEverhour(title, titleEvents, assignedProject, addBtn);
@@ -405,7 +407,9 @@ async function loadSummary() {
           tr.appendChild(td);
           const addTd = document.createElement('td');
           const addBtn = document.createElement('button');
-          addBtn.textContent = 'Add to Everhour';
+          addBtn.className = 'everhour-btn';
+          addBtn.textContent = '+';
+          addBtn.title = 'Add to Everhour';
           addBtn.style.marginTop = '0';
           const titleEvents = filteredEvents.filter(ev => ev.title === title);
           addBtn.onclick = () => sendToEverhour(title, titleEvents, assignedProject, addBtn);
