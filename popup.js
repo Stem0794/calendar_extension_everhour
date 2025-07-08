@@ -37,13 +37,32 @@ async function maybeShowOnboarding() {
 }
 maybeShowOnboarding();
 
+// --- RESTORE LAST STATE ---
+async function restoreState() {
+  const { activeTab = 'summary', summaryFilter = 'week', hoursFilter = 'week' } = await storage.get(['activeTab', 'summaryFilter', 'hoursFilter']);
+  const sumSel = document.getElementById('summary-filter');
+  const hoursSel = document.getElementById('hours-filter');
+  if (sumSel) sumSel.value = summaryFilter;
+  if (hoursSel) hoursSel.value = hoursFilter;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const tabBtn = document.querySelector(`.tab[data-tab="${activeTab}"]`) || document.querySelector('.tab');
+  const tabContent = document.getElementById(activeTab) || document.querySelector('.tab-content');
+  if (tabBtn) tabBtn.classList.add('active');
+  if (tabContent) tabContent.classList.add('active');
+  if (activeTab === 'hours') loadProjectHours();
+  if (activeTab === 'projects') renderProjectList();
+  if (activeTab === 'summary') loadSummary();
+}
+
 // --- TABS ---
 document.querySelectorAll('.tab').forEach(tab => {
-  tab.onclick = () => {
+  tab.onclick = async () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById(tab.dataset.tab).classList.add('active');
+    await storage.set({ activeTab: tab.dataset.tab });
     if (tab.dataset.tab === "hours") loadProjectHours();
     if (tab.dataset.tab === "projects") renderProjectList();
     if (tab.dataset.tab === "summary") loadSummary();
@@ -440,8 +459,10 @@ async function loadSummary() {
     });
   });
 }
-document.getElementById('summary-filter').onchange = loadSummary;
-loadSummary();
+document.getElementById('summary-filter').onchange = async () => {
+  await storage.set({ summaryFilter: document.getElementById('summary-filter').value });
+  loadSummary();
+};
 
 // --- PROJECT HOURS TAB ---
 async function loadProjectHours() {
@@ -550,4 +571,10 @@ async function loadProjectHours() {
     });
   });
 }
-document.getElementById('hours-filter').onchange = loadProjectHours;
+document.getElementById('hours-filter').onchange = async () => {
+  await storage.set({ hoursFilter: document.getElementById('hours-filter').value });
+  loadProjectHours();
+};
+
+// Initialize UI with last used state
+restoreState();
