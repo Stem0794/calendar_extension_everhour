@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Weekly Calendar Project Tracker</title>
+  <title>Extension Settings</title>
   <style>
     body {
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
@@ -55,33 +55,8 @@
   </style>
 </head>
 <body>
-  <div id="onboarding-tip" class="onboarding-tip" style="display:none;">
-    Welcome! Switch to Google Calendar in Week View and open the extension.<br>
-    <span style="font-size:11px;color:#3e5678;">(Click to hide this tip forever.)</span>
-  </div>
-  <div id="tabs">
-    <div class="tab active" data-tab="summary">Summary</div>
-    <div class="tab" data-tab="settings">Settings</div>
-    <div class="tab" data-tab="hours">Project Hours</div>
-  </div>
-
-  <div id="summary" class="tab-content active">
-    <div class="filter-bar">
-      <label for="summary-filter" style="font-size:13px;">Show:</label>
-      <select id="summary-filter" style="margin-left:6px;">
-        <option value="week">Week</option>
-        <option value="monday">Monday</option>
-        <option value="tuesday">Tuesday</option>
-        <option value="wednesday">Wednesday</option>
-        <option value="thursday">Thursday</option>
-        <option value="friday">Friday</option>
-      </select>
-    </div>
-    <div id="meeting-list"></div>
-    <button id="export">Export to CSV</button>
-  </div>
-
-  <div id="settings" class="tab-content">
+  <h2 style="margin:0; padding:16px;">Settings</h2>
+  <div id="settings" class="tab-content active">
     <div>
       <input type="text" id="new-project" placeholder="New project name" autocomplete="off"/>
       <input type="color" id="new-project-color" value="#42a5f5" title="Project color"/>
@@ -97,23 +72,6 @@
       <span id="token-status" style="font-size:12px;margin-left:6px;"></span>
     </div>
   </div>
-
-  <div id="hours" class="tab-content">
-    <div class="filter-bar">
-      <label for="hours-filter" style="font-size:13px;">Show:</label>
-      <select id="hours-filter" style="margin-left:6px;">
-        <option value="week">Week</option>
-        <option value="monday">Monday</option>
-        <option value="tuesday">Tuesday</option>
-        <option value="wednesday">Wednesday</option>
-        <option value="thursday">Thursday</option>
-        <option value="friday">Friday</option>
-      </select>
-    </div>
-    <div id="project-hours-table"></div>
-    <button id="export-hours">Export to CSV</button>
-  </div>
-
-  <script src="popup.js"></script>
+  <script src="options.js"></script>
 </body>
 </html>

@@ -51,7 +51,7 @@ async function restoreState() {
   if (tabBtn) tabBtn.classList.add('active');
   if (tabContent) tabContent.classList.add('active');
   if (activeTab === 'hours') loadProjectHours();
-  if (activeTab === 'projects') renderProjectList();
+  if (activeTab === 'settings') renderProjectList();
   if (activeTab === 'summary') loadSummary();
 }
 
@@ -64,7 +64,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById(tab.dataset.tab).classList.add('active');
     await storage.set({ activeTab: tab.dataset.tab });
     if (tab.dataset.tab === "hours") loadProjectHours();
-    if (tab.dataset.tab === "projects") renderProjectList();
+    if (tab.dataset.tab === "settings") renderProjectList();
     if (tab.dataset.tab === "summary") loadSummary();
   };
 });
