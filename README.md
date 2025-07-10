@@ -18,12 +18,11 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 ## 🚀 How to Use
 
 1. Open [Google Calendar](https://calendar.google.com) in **Week View**
-2. Click the extension icon (or right-click it and choose **Options** to open the Settings page in a new tab)
+2. Click the extension icon (use **Options** or the **Open Settings Page** button in the Settings tab for a full-page view)
 3. Use the **Summary** tab to assign meetings to projects
 4. View project totals in the **Project Hours** tab
 5. Export your data if needed for reporting
-6. In the **Settings** tab or **Options** page, enter your Everhour API token and each project's task ID
-
+6. In the **Settings** tab or full Settings page, enter your Everhour API token and each project's task ID
 > Tip: Add custom **keywords** when creating projects to auto-link new meetings in future weeks.
 
 ## 🗂 Tabs Overview
