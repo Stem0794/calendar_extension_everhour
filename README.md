@@ -54,16 +54,19 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 ## 🔑 Everhour Setup
 
 1. Open the **Projects** tab of the popup.
-2. Enter your Everhour API token in the settings field and click **Save**.
-3. For each project, provide the Everhour task ID so time can be logged.
-4. Use the **Add to Everhour** button next to a meeting to log its time via Everhour's `/tasks/{id}/time` endpoint.
-4. For each project, provide the Everhour task ID so time can be logged.
-5. Use the **Add to Everhour** button next to a meeting to log its time via Everhour's `/tasks/{id}/time` endpoint.
-6. Use the **Add to Everhour** button next to a meeting to send its time entry.
+2. Enter your Everhour API token and click **Save**.
+3. For each project, set its Everhour task ID.
+4. Click **Add to Everhour** next to a meeting to log its time via the `/tasks/{id}/time` endpoint.
+
+## 🧪 Running Tests
+
+Run `node test.js` to check script syntax and sample parsing. Node.js must be installed.
 
 ## 👤 Author
 GitHub: [@Stem0794](https://github.com/Stem0794)
 
 ---
 
-MIT License
+## License
+
+MIT
