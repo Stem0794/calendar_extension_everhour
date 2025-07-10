@@ -92,6 +92,7 @@ async function saveEverhourToken() {
   }
 }
 document.getElementById('save-token').onclick = saveEverhourToken;
+document.getElementById('open-options').onclick = () => { chrome.runtime.openOptionsPage(); };
 loadEverhourToken();
 
 // --- PROJECTS CRUD ---
