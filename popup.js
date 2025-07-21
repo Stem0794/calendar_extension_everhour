@@ -327,6 +327,10 @@ async function loadSummary() {
             projects.map(p => `<option value="${p.name}" style="background:${p.color};" ${assignedProject === p.name ? "selected" : ""}>${p.name}</option>`).join('');
           sel.onchange = async () => {
             map[title] = sel.value;
+            assignedProject = sel.value;
+            const proj = projects.find(p => p.name === sel.value);
+            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+            else tr.style.background = '';
             await setMeetingToProjectMap(map);
           };
           if (assignedProject) {
@@ -344,7 +348,7 @@ async function loadSummary() {
           addBtn.title = 'Add to Everhour';
           addBtn.style.marginTop = '0';
           const titleEvents = events.filter(ev => ev.title === title);
-          addBtn.onclick = () => sendToEverhour(title, titleEvents, assignedProject, addBtn);
+          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn);
           addTd.appendChild(addBtn);
           tr.appendChild(addTd);
           table.appendChild(tr);
@@ -415,6 +419,10 @@ async function loadSummary() {
             projects.map(p => `<option value="${p.name}" style="background:${p.color};" ${assignedProject === p.name ? "selected" : ""}>${p.name}</option>`).join('');
           sel.onchange = async () => {
             map[title] = sel.value;
+            assignedProject = sel.value;
+            const proj = projects.find(p => p.name === sel.value);
+            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+            else tr.style.background = '';
             await setMeetingToProjectMap(map);
           };
           if (assignedProject) {
@@ -432,7 +440,7 @@ async function loadSummary() {
           addBtn.title = 'Add to Everhour';
           addBtn.style.marginTop = '0';
           const titleEvents = filteredEvents.filter(ev => ev.title === title);
-          addBtn.onclick = () => sendToEverhour(title, titleEvents, assignedProject, addBtn);
+          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn);
           addTd.appendChild(addBtn);
           tr.appendChild(addTd);
           table.appendChild(tr);
