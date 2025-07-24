@@ -1,6 +1,6 @@
 # Calendar to Project Hours – Chrome Extension
 
-A lightweight Chrome extension that helps you track and summarize your Google Calendar meetings by project. It auto-detects meetings, links them to projects, and exports weekly or daily hour summaries to make time tracking faster and easier.
+A lightweight Chrome extension that helps you track and summarize your Google Calendar meetings by project. It auto-detects meetings, links them to projects, and lets you quickly log time to Everhour.
 
 ## 🔧 Features
 
@@ -10,7 +10,6 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 - **Auto-links** recurring meetings to their projects using custom keywords
 - **Color-code** each project for clarity
 - Shows total hours per **project**, per **day**, or **per week**
-- Export summaries as **CSV** files (per week, per day, or across weeks)
 - Quickly send a meeting's time to **Everhour**
 - Simple **onboarding tooltip** to get started
 - Modern, clean UI
@@ -21,8 +20,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 2. Click the extension icon (use **Options** or the **Open Settings Page** button in the Settings tab for a full-page view)
 3. Use the **Summary** tab to assign meetings to projects
 4. View project totals in the **Project Hours** tab
-5. Export your data if needed for reporting
-6. In the **Settings** tab or full Settings page, enter your Everhour API token and each project's task ID
+5. In the **Settings** tab or full Settings page, enter your Everhour API token and each project's task ID
 > Tip: Add custom **keywords** when creating projects to auto-link new meetings in future weeks.
 
 ## 🗂 Tabs Overview
@@ -38,12 +36,6 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 3. Enable **Developer Mode**
 4. Click **Load unpacked**
 5. Select the folder with this extension
-
-## 📤 Export Formats
-
-- `weekly_calendar_summary.csv`
-- `project_hours_summary.csv`
-- Daily versions like `calendar_monday.csv`, etc.
 
 ## ✅ Requirements
 
