@@ -51,7 +51,6 @@ async function restoreState() {
   if (tabBtn) tabBtn.classList.add('active');
   if (tabContent) tabContent.classList.add('active');
   if (activeTab === 'hours') loadProjectHours();
-  if (activeTab === 'settings') renderProjectList();
   if (activeTab === 'summary') loadSummary();
 }
 
@@ -64,7 +63,6 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById(tab.dataset.tab).classList.add('active');
     await storage.set({ activeTab: tab.dataset.tab });
     if (tab.dataset.tab === "hours") loadProjectHours();
-    if (tab.dataset.tab === "settings") renderProjectList();
     if (tab.dataset.tab === "summary") loadSummary();
   };
 });
@@ -76,138 +74,11 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
-// --- TOKEN SETTINGS ---
-async function loadEverhourToken() {
-  const { everhourToken = '' } = await storage.get('everhourToken');
-  const inp = document.getElementById('everhour-token');
-  if (inp) inp.value = everhourToken;
-}
-async function saveEverhourToken() {
-  const token = document.getElementById('everhour-token').value.trim();
-  await storage.set({ everhourToken: token });
-  const status = document.getElementById('token-status');
-  if (status) {
-    status.textContent = 'Saved!';
-    setTimeout(() => { status.textContent = ''; }, 1500);
-  }
-}
-document.getElementById('save-token').onclick = saveEverhourToken;
-document.getElementById('open-options').onclick = () => { chrome.runtime.openOptionsPage(); };
-loadEverhourToken();
-
-// --- PROJECTS CRUD ---
-async function renderProjectList() {
-  const { projects = [] } = await storage.get('projects');
-  const list = document.getElementById('project-list');
-  list.innerHTML = '';
-  projects.forEach((proj, idx) => {
-    const li = document.createElement('li');
-    li.style.alignItems = 'center';
-    const dot = `<span class="color-dot" style="background:${proj.color||'#c1d6f9'};"></span>`;
-    // Editing
-    if (proj._edit) {
-      li.innerHTML = `${dot}<input type="text" class="rename-input" value="${proj.name}" id="rename-proj-${idx}"/>`
-      + `<input type="color" id="edit-color-${idx}" value="${proj.color||'#42a5f5'}" style="margin-left:6px;width:32px;"/>`
-      + `<input type="text" class="keyword-input" value="${(proj.keywords||[]).join(', ')}" id="edit-keywords-${idx}" placeholder="Keywords"/>`
-      + `<input type="text" class="task-input" value="${proj.taskId||''}" id="edit-task-${idx}" placeholder="Task ID"/>`
-      + `<button class="save-btn" data-idx="${idx}">Save</button><button class="cancel-btn" data-idx="${idx}">Cancel</button>`;
-    } else {
-      li.innerHTML = `${dot}<span>${proj.name}</span>`
-        + `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">[${(proj.keywords||[]).join(', ')}]</span>`
-        + (proj.taskId ? `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">(${proj.taskId})</span>` : '')
-        + `<button class="edit-btn" data-idx="${idx}">Edit</button>`
-        + `<button class="delete-btn" data-idx="${idx}" title="Delete">Delete</button>`;
-    }
-    list.appendChild(li);
-  });
-  // Edit, Save, Cancel, Delete
-  list.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.onclick = async () => {
-      const { projects = [] } = await storage.get('projects');
-      projects[+btn.dataset.idx]._edit = true;
-      await storage.set({ projects });
-      renderProjectList();
-    };
-  });
-  list.querySelectorAll('.cancel-btn').forEach(btn => {
-    btn.onclick = async () => {
-      const { projects = [] } = await storage.get('projects');
-      projects[+btn.dataset.idx]._edit = false;
-      await storage.set({ projects });
-      renderProjectList();
-    };
-  });
-  list.querySelectorAll('.save-btn').forEach(btn => {
-    btn.onclick = async () => {
-      const idx = +btn.dataset.idx;
-      const name = document.getElementById(`rename-proj-${idx}`).value.trim();
-      const color = document.getElementById(`edit-color-${idx}`).value;
-      const keywords = document.getElementById(`edit-keywords-${idx}`).value.split(',').map(k=>k.trim()).filter(Boolean);
-      const taskId = document.getElementById(`edit-task-${idx}`).value.trim();
-      let { projects = [] } = await storage.get('projects');
-      // Validation
-      if (!name) {
-        alert('Project name cannot be empty');
-        return;
-      }
-      const nameLower = name.toLowerCase();
-      if (projects.some((p,i) => i !== idx && p.name.toLowerCase() === nameLower)) {
-        alert('A project with this name already exists');
-        return;
-      }
-      const oldName = projects[idx].name;
-      projects[idx] = { name, color, keywords, taskId, _edit: false };
-      await storage.set({ projects });
-      // Update mapping for meetings previously linked to oldName
-      let { meetingProjectMap={} } = await storage.get('meetingProjectMap');
-      if (name !== oldName) {
-        Object.keys(meetingProjectMap).forEach(tit => {
-          if (meetingProjectMap[tit] === oldName) meetingProjectMap[tit] = name;
-        });
-        await storage.set({ meetingProjectMap });
-      }
-      renderProjectList();
-      // Refresh other tabs after renaming
-      loadSummary();
-      loadProjectHours();
-    }
-  });
-  list.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.onclick = async () => {
-      let { projects = [] } = await storage.get('projects');
-      const toDelete = projects[+btn.dataset.idx].name;
-      projects.splice(+btn.dataset.idx, 1);
-      await storage.set({ projects });
-      // Remove from mapping
-      let { meetingProjectMap={} } = await storage.get('meetingProjectMap');
-      Object.keys(meetingProjectMap).forEach(tit => {
-        if (meetingProjectMap[tit] === toDelete) delete meetingProjectMap[tit];
-      });
-      await storage.set({ meetingProjectMap });
-      renderProjectList();
-      // Refresh view
-      loadSummary();
-      loadProjectHours();
-    };
-  });
-}
-document.getElementById('add-project').onclick = async () => {
-  const inp = document.getElementById('new-project');
-  const color = document.getElementById('new-project-color').value || '#42a5f5';
-  const kwds = document.getElementById('new-project-keywords').value.split(',').map(k=>k.trim()).filter(Boolean);
-  const taskId = document.getElementById('new-project-task').value.trim();
-  const name = inp.value.trim();
-  if (!name) return;
-  let { projects = [] } = await storage.get('projects');
-  if (!projects.find(p=>p.name===name)) {
-    projects.push({ name, color, keywords: kwds, taskId });
-    await storage.set({ projects });
-    renderProjectList();
-  }
-  inp.value = '';
-  document.getElementById('new-project-keywords').value = '';
-  document.getElementById('new-project-task').value = '';
+// Settings page button
+document.getElementById('open-options').onclick = () => {
+  chrome.runtime.openOptionsPage();
 };
+
 
 // --- PROJECT MAP ---
 async function getMeetingToProjectMap() {
@@ -355,24 +226,7 @@ async function loadSummary() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        // CSV Export
-        document.getElementById('export').onclick = () => {
-          const csvRows = [['Meeting', 'Hours', 'Project']];
-          for (let [title, mins] of rows) {
-            const hours = Math.round((mins / 60) * 100) / 100;
-            csvRows.push([title, hours, map[title] || '']);
-          }
-          const csv = csvRows
-            .map(r => r.map(quoteField).join(','))
-            .join('\r\n');
-          const blob = new Blob([csv], { type: 'text/csv' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'weekly_calendar_summary.csv';
-          a.click();
-          URL.revokeObjectURL(url);
-        };
+        // No export button in popup
       } else {
         // --- DAY FILTER ---
         const dayIdx = JS_DAY_IDX[filter]; // Correct mapping
@@ -447,24 +301,7 @@ async function loadSummary() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        // CSV Export day
-        document.getElementById('export').onclick = () => {
-          const csvRows = [['Meeting', 'Hours', 'Project']];
-          for (let [title, mins] of rows) {
-            const hours = Math.round((mins / 60) * 100) / 100;
-            csvRows.push([title, hours, map[title] || '']);
-          }
-          const csv = csvRows
-            .map(r => r.map(quoteField).join(','))
-            .join('\r\n');
-          const blob = new Blob([csv], { type: 'text/csv' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `calendar_${filter}.csv`;
-          a.click();
-          URL.revokeObjectURL(url);
-        };
+        // No export button in popup
       }
     });
   });
@@ -510,22 +347,7 @@ async function loadProjectHours() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        document.getElementById('export-hours').onclick = () => {
-          const csvRows = [['Project', 'Total Hours (this week)']];
-          for (let [project, hours] of rows) {
-            csvRows.push([project, hours]);
-          }
-          const csv = csvRows
-            .map(r => r.map(quoteField).join(','))
-            .join('\r\n');
-          const blob = new Blob([csv], { type: 'text/csv' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'project_hours_summary.csv';
-          a.click();
-          URL.revokeObjectURL(url);
-        };
+        // No export button in popup
       } else {
         // Per day
         const dayIdx = JS_DAY_IDX[filter];
@@ -561,22 +383,7 @@ async function loadProjectHours() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        document.getElementById('export-hours').onclick = () => {
-          const csvRows = [['Project', 'Hours']];
-          for (let [project, hours] of rows) {
-            csvRows.push([project, hours]);
-          }
-          const csv = csvRows
-            .map(r => r.map(quoteField).join(','))
-            .join('\r\n');
-          const blob = new Blob([csv], { type: 'text/csv' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `project_hours_${filter}.csv`;
-          a.click();
-          URL.revokeObjectURL(url);
-        };
+        // No export button in popup
       }
     });
   });

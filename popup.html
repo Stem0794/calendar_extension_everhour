@@ -40,7 +40,6 @@
     button, select, input[type="text"], input[type="color"] { font-size: 14px; border-radius: 6px; border: 1px solid #bfc6d2; background: #f4f7fa; color: #1d273b; outline: none; margin-top: 10px; margin-bottom: 4px; padding: 6px 14px; transition: border 0.13s; }
     button { background: #4f8cff; color: #fff; border: none; margin-top: 16px; cursor: pointer; font-weight: 500; padding: 8px 18px; box-shadow: 0 1px 2px #4f8cff11; transition: background 0.18s; }
     button:hover { background: #356cd2; }
-    #add-project, #export, #export-hours { margin-left: 4px; margin-top: 10px; }
     select { background: #fff; border: 1px solid #bfc6d2; min-width: 90px; margin-left: 4px; margin-top: 0; height: 32px; }
     input[type="text"] { padding: 7px 12px; width: 60%; background: #fff; margin-right: 4px; }
     .delete-btn { color: #c52929; background: #fff; border: 1px solid #ebebeb; margin-left: 9px; padding: 3px 10px; font-size: 13px; border-radius: 4px; transition: background 0.16s; }
@@ -65,7 +64,6 @@
   </div>
   <div id="tabs">
     <div class="tab active" data-tab="summary">Summary</div>
-    <div class="tab" data-tab="settings">Settings</div>
     <div class="tab" data-tab="hours">Project Hours</div>
   </div>
 
@@ -80,28 +78,11 @@
         <option value="thursday">Thursday</option>
         <option value="friday">Friday</option>
       </select>
+      <button id="open-options" style="margin-left:8px;margin-top:0;">Settings</button>
     </div>
     <div id="meeting-list"></div>
-    <button id="export">Export to CSV</button>
   </div>
 
-  <div id="settings" class="tab-content">
-    <div>
-      <input type="text" id="new-project" placeholder="New project name" autocomplete="off"/>
-      <input type="color" id="new-project-color" value="#42a5f5" title="Project color"/>
-      <input type="text" id="new-project-keywords" placeholder="Keywords, comma-separated" class="keyword-input" autocomplete="off"/>
-      <input type="text" id="new-project-task" placeholder="Task ID" class="task-input" autocomplete="off"/>
-      <button id="add-project">Add</button>
-    </div>
-    <ul id="project-list"></ul>
-    <div style="margin-top:16px;">
-      <label for="everhour-token" style="font-size:13px;">Everhour API Token:</label>
-      <input type="text" id="everhour-token" placeholder="Token" class="task-input" autocomplete="off"/>
-      <button id="save-token">Save</button>
-      <span id="token-status" style="font-size:12px;margin-left:6px;"></span>
-    <button id="open-options" style="margin-top:10px;">Open Settings Page</button>
-    </div>
-  </div>
 
   <div id="hours" class="tab-content">
     <div class="filter-bar">
@@ -116,7 +97,6 @@
       </select>
     </div>
     <div id="project-hours-table"></div>
-    <button id="export-hours">Export to CSV</button>
   </div>
 
   <script src="popup.js"></script>
