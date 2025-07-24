@@ -51,6 +51,12 @@ function parseEventsFromWeekView() {
     if (commaIdx !== -1) {
       cleanTitle = cleanTitle.slice(0, commaIdx).trim();
     }
+    let comment = '';
+    const plusIdx = cleanTitle.indexOf('+');
+    if (plusIdx !== -1) {
+      comment = cleanTitle.slice(plusIdx + 1).trim();
+      cleanTitle = cleanTitle.slice(0, plusIdx).trim();
+    }
     const lowerTitle = cleanTitle.toLowerCase();
     if (
       monthOnlyRegex.test(lowerTitle) ||
@@ -80,6 +86,7 @@ function parseEventsFromWeekView() {
       String(startMinutes % 60).padStart(2, '0');
     parsed.push({
       title: cleanTitle,
+      comment,
       duration,
       date,
       dayOfWeek,

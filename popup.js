@@ -245,7 +245,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
   btn.textContent = 'Sending...';
   try {
     for (const ev of eventsToSend) {
-      const { date, duration } = ev;
+      const { date, duration, comment = '' } = ev;
       const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
         method: 'POST',
         headers: {
@@ -255,7 +255,8 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
         body: JSON.stringify({
           task: taskId,
           date,
-          time: Math.round(duration * 60)
+          time: Math.round(duration * 60),
+          comment
         })
       });
       if (!res.ok) {

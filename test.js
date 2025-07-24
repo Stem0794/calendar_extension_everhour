@@ -39,9 +39,15 @@ function toMinutes(str) {
 function parseSample(text) {
   const m = text.match(regex);
   if(!m) return null;
-  const [, start, end, title] = m;
+  let [, start, end, title] = m;
+  let comment = '';
+  const plusIdx = title.indexOf('+');
+  if(plusIdx !== -1){
+    comment = title.slice(plusIdx + 1).trim();
+    title = title.slice(0, plusIdx).trim();
+  }
   const duration = toMinutes(end) - toMinutes(start);
-  return { start, end, title, duration };
+  return { start, end, title, duration, comment };
 }
 
 // Tests for quoteField
@@ -55,10 +61,14 @@ assert.strictEqual(addAlpha('#ff0000', 0.5), 'rgba(255, 0, 0, 0.5)');
 assert.strictEqual(addAlpha('#00ff00', 1), 'rgba(0, 255, 0, 1)');
 
 // Regex parsing tests
+
 let p = parseSample('from 9:00 to 10:00 Meeting');
-assert.deepStrictEqual(p, { start:'9:00 ', end:'10:00 ', title:'Meeting', duration:60 });
+assert.deepStrictEqual(p, { start:'9:00 ', end:'10:00 ', title:'Meeting', duration:60, comment:'' });
 
 p = parseSample('de 9h00 à 10h00 Réunion');
-assert.deepStrictEqual(p, { start:'9h00 ', end:'10h00 ', title:'Réunion', duration:60 });
+assert.deepStrictEqual(p, { start:'9h00 ', end:'10h00 ', title:'Réunion', duration:60, comment:'' });
+
+p = parseSample('from 9:00 to 10:00 Meeting + Notes');
+assert.deepStrictEqual(p, { start:'9:00 ', end:'10:00 ', title:'Meeting', duration:60, comment:'Notes' });
 
 console.log('All tests passed.');
