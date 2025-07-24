@@ -83,8 +83,9 @@ const alerts = [];
 global.alert = msg => alerts.push(msg);
 
 const storage = {
-  data: { everhourToken:'t', projects:[{ name:'Proj', taskId:123 }] },
-  async get(key){ return { [key]: this.data[key] }; }
+  data: { everhourToken:'t', projects:[{ name:'Proj', taskId:123 }], everhourEntries:{} },
+  async get(key){ return { [key]: this.data[key] }; },
+  async set(obj){ Object.assign(this.data, obj); }
 };
 
 let calls = [];
@@ -93,7 +94,7 @@ global.fetch = async (url, opts) => {
   return { ok:true, json: async () => ({ id: 'id'+calls.length }) };
 };
 
-async function sendToEverhour(title, eventsArr, assignedProject, btn){
+async function sendToEverhour(title, eventsArr, assignedProject, btn, key){
   const { everhourToken='' } = await storage.get('everhourToken');
   if(!everhourToken){ alert('Please set your Everhour token'); return; }
   if(!assignedProject){ alert('Select a project for this meeting'); return; }
@@ -122,6 +123,9 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn){
     btn.dataset.entryIds = JSON.stringify(entryIds);
     btn.textContent='✓';
     btn.disabled=false;
+    if(key){
+      storage.data.everhourEntries[key] = entryIds;
+    }
   }catch(e){
     btn.textContent='Error';
     setTimeout(()=>{ btn.textContent=prev; btn.disabled=false; },2000);
@@ -131,8 +135,17 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn){
 async function removeFromEverhour(btn){
   const { everhourToken='' } = await storage.get('everhourToken');
   if(!everhourToken){ alert('Please set your Everhour token'); return; }
-  const ids = JSON.parse(btn.dataset.entryIds || '[]');
-  if(!ids.length){ btn.dataset.sent='false'; btn.textContent='+'; return; }
+  const key = btn.dataset.weekKey || '';
+  let ids = JSON.parse(btn.dataset.entryIds || '[]');
+  if(!ids.length && key){
+    ids = storage.data.everhourEntries[key] || [];
+  }
+  if(!ids.length){
+    btn.dataset.sent='false';
+    btn.textContent='+';
+    if(key) delete storage.data.everhourEntries[key];
+    return;
+  }
   btn.disabled=true;
   const prev = btn.textContent;
   btn.textContent='⌛';
@@ -145,6 +158,7 @@ async function removeFromEverhour(btn){
     btn.dataset.entryIds='';
     btn.textContent='+';
     btn.disabled=false;
+    if(key) delete storage.data.everhourEntries[key];
   }catch(e){
     btn.textContent='Error';
     setTimeout(()=>{ btn.textContent=prev; btn.disabled=false; },2000);
@@ -153,20 +167,24 @@ async function removeFromEverhour(btn){
 
 const btn = { disabled:false, textContent:'+', dataset:{} };
 const events = [{ title:'Meeting', date:'2025-01-01', duration:1, comment:'Test' }];
+const weekKey = 'Meeting|2024-12-30';
+btn.dataset.weekKey = weekKey;
 
 (async () => {
-  await sendToEverhour('Meeting', events, 'Proj', btn);
+  await sendToEverhour('Meeting', events, 'Proj', btn, weekKey);
   assert.strictEqual(btn.dataset.sent, 'true');
   assert.strictEqual(btn.textContent, '✓');
   assert.deepStrictEqual(JSON.parse(btn.dataset.entryIds), ['id1']);
   assert.strictEqual(calls[0].url, 'https://api.everhour.com/tasks/123/time');
   assert.strictEqual(JSON.parse(calls[0].opts.body).comment, 'Test');
+  assert.deepStrictEqual(storage.data.everhourEntries[weekKey], ['id1']);
 
   calls = [];
   await removeFromEverhour(btn);
   assert.strictEqual(btn.dataset.sent, 'false');
   assert.strictEqual(btn.textContent, '+');
   assert.strictEqual(btn.dataset.entryIds, '');
+  assert.deepStrictEqual(storage.data.everhourEntries[weekKey], undefined);
   assert.strictEqual(calls[0].url, 'https://api.everhour.com/time/id1');
   assert.strictEqual(calls[0].opts.method, 'DELETE');
 
