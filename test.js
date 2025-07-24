@@ -1,5 +1,7 @@
 const assert = require('assert');
 const cp = require('child_process');
+const fs = require('fs');
+const vm = require('vm');
 
 // Syntax checks for popup and content scripts
 cp.execSync('node -c popup.js');
@@ -77,6 +79,61 @@ assert.deepStrictEqual(p, { start:'1pm', end:'2:30pm', title:'Demo', duration:90
 
 p = parseSample('de 13h00 à 14h30 Rendez-vous + Plan');
 assert.deepStrictEqual(p, { start:'13h00 ', end:'14h30 ', title:'Rendez-vous', duration:90, comment:'Plan' });
+
+// --- parseEventsFromWeekView tests ---
+function createContentDoc(html){
+  const chips=[]; let idx=0; const open='<div data-eventchip>';
+  while((idx=html.indexOf(open,idx))!==-1){
+    const start=idx+open.length;
+    const end=html.indexOf('</div></div>',start);
+    const inner=html.slice(start,end+6);
+    const m=inner.match(/<div class="XuJrye">([\s\S]*?)<\/div>/);
+    const text=m?m[1].trim():'';
+    chips.push({querySelector:s=>s=='.XuJrye'?{textContent:text}:null});
+    idx=end+12;
+  }
+  return {querySelectorAll:s=>s=='[data-eventchip]'?chips:[]};
+}
+
+const contentCode = fs.readFileSync('content.js','utf8');
+let sandbox = {chrome:{runtime:{onMessage:{addListener(){}}}},console};
+vm.createContext(sandbox);vm.runInContext(contentCode,sandbox);
+sandbox.document = createContentDoc('<div data-eventchip><div class="XuJrye">Mon 25 September 2023 from 9:00 to 10:00 Meeting A</div></div>');
+let ev = sandbox.parseEventsFromWeekView();
+assert.strictEqual(ev.length,1);
+assert.strictEqual(ev[0].title,'Meeting A');
+assert.strictEqual(ev[0].date,'2023-09-25');
+
+sandbox.document = createContentDoc('<div data-eventchip><div class="XuJrye">mardi 26 septembre 2023 de 14h00 à 15h00 Réunion B + Note</div></div>');
+ev = sandbox.parseEventsFromWeekView();
+assert.strictEqual(ev[0].comment,'Note');
+assert.strictEqual(ev[0].startTime,'14:00');
+
+// --- popup.js getWeekKey and dropdown tests ---
+class Element{constructor(t){this.tagName=t;this.children=[];this.innerHTML='';this.value='';this.style={};this.dataset={};this.classList={add(){},remove(){}};}appendChild(c){this.children.push(c);}}
+class Select extends Element{constructor(){super('select');this.options=[];this.selectedIndex=0;}set innerHTML(h){this._innerHTML=h;this.options=[];const r=/<option[^>]*>(.*?)<\/option>/gi;let m;while((m=r.exec(h))){const val=(m[0].match(/value="(.*?)"/)||[])[1]||'';this.options.push({value:val,text:m[1]});}}get innerHTML(){return this._innerHTML;}}
+const popupCode = fs.readFileSync('popup.js','utf8');
+function setupPopup(events){
+  const document={
+    elements:{},
+    createElement:t=>t==='select'?new Select():new Element(t),
+    getElementById(id){return this.elements[id]||(this.elements[id]=new Element('div'));},
+    querySelectorAll(){return {forEach(){}}},
+    querySelector(){return null}
+  };
+  const chrome={
+    tabs:{query:(o,cb)=>cb([{id:1}]), sendMessage:(id,msg,cb)=>{cb(events);}},
+    storage:{local:{
+      get:(key,cb)=>{const data={projects:[{name:'P1',color:'#ccc'}],everhourEntries:{},meetingProjectMap:{},onboarded:true};const res=typeof key==='string'?{[key]:data[key]}:key.reduce((o,k)=>{o[k]=data[k];return o;},{}); if(cb) cb(res); else return Promise.resolve(res);},
+      set:(o,cb)=>{cb&&cb(); return Promise.resolve();},
+      remove:(k,cb)=>{cb&&cb(); return Promise.resolve();}
+    }},
+    runtime:{openOptionsPage(){}, lastError:null}
+  };
+  const sb={console,chrome,document};
+  vm.createContext(sb);vm.runInContext(popupCode,sb);
+  return {sb,document};
+}
 
 // Tests for unknown month handling in content.js
 const fs = require('fs');
@@ -202,6 +259,15 @@ const weekKey = 'Meeting|2024-12-30';
 btn.dataset.weekKey = weekKey;
 
 (async () => {
+  // popup.js dropdown and getWeekKey tests
+  let env = setupPopup([{title:'M',duration:60,date:'2023-09-25',dayOfWeek:1,dayName:'Mon'}]);
+  env.document.getElementById('summary-filter').value = 'week';
+  await new Promise(r=>{env.sb.chrome.tabs.sendMessage=(id,msg,cb)=>{cb([{title:'M',duration:60,date:'2023-09-25',dayOfWeek:1,dayName:'Mon'}]);setTimeout(r,0);}; env.sb.loadSummary();});
+  const tbl = env.document.getElementById('meeting-list').children[0];
+  const sel = tbl.children[1].children[0].children[0];
+  assert.deepStrictEqual(sel.options.map(o=>o.text), ['-','P1']);
+  assert.strictEqual(env.sb.getWeekKey('Test',[{date:'2023-09-27'}]), 'Test|2023-09-25');
+
   await sendToEverhour('Meeting', events, 'Proj', btn, weekKey);
   assert.strictEqual(btn.dataset.sent, 'true');
   assert.strictEqual(btn.textContent, '✓');
