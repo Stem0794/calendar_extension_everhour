@@ -326,12 +326,14 @@ async function loadSummary() {
           const sel = document.createElement('select');
           sel.innerHTML = '<option value="">-</option>' +
             projects.map(p => `<option value="${p.name}" style="background:${p.color};" ${assignedProject === p.name ? "selected" : ""}>${p.name}</option>`).join('');
+          sel.title = sel.options[sel.selectedIndex]?.text || '';
           sel.onchange = async () => {
             map[title] = sel.value;
             assignedProject = sel.value;
             const proj = projects.find(p => p.name === sel.value);
             if (proj) tr.style.background = addAlpha(proj.color, 0.2);
             else tr.style.background = '';
+            sel.title = sel.options[sel.selectedIndex]?.text || '';
             await setMeetingToProjectMap(map);
           };
           if (assignedProject) {
@@ -418,12 +420,14 @@ async function loadSummary() {
           const sel = document.createElement('select');
           sel.innerHTML = '<option value="">-</option>' +
             projects.map(p => `<option value="${p.name}" style="background:${p.color};" ${assignedProject === p.name ? "selected" : ""}>${p.name}</option>`).join('');
+          sel.title = sel.options[sel.selectedIndex]?.text || '';
           sel.onchange = async () => {
             map[title] = sel.value;
             assignedProject = sel.value;
             const proj = projects.find(p => p.name === sel.value);
             if (proj) tr.style.background = addAlpha(proj.color, 0.2);
             else tr.style.background = '';
+            sel.title = sel.options[sel.selectedIndex]?.text || '';
             await setMeetingToProjectMap(map);
           };
           if (assignedProject) {
