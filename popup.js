@@ -113,6 +113,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
     return;
   }
   btn.disabled = true;
+  const prev = btn.dataset.sent === 'true' ? '✓' : '+';
   btn.textContent = 'Sending...';
   try {
     for (const ev of eventsToSend) {
@@ -134,15 +135,18 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
         throw new Error('Request failed');
       }
     }
-    btn.textContent = 'Added!';
+    btn.dataset.sent = 'true';
+    btn.textContent = '✓';
+    btn.disabled = false;
   } catch (e) {
     console.error(e);
     btn.textContent = 'Error';
+    setTimeout(() => {
+      btn.textContent = prev;
+      btn.disabled = false;
+    }, 2000);
+    return;
   }
-  setTimeout(() => {
-    btn.textContent = '+';
-    btn.disabled = false;
-  }, 2000);
 }
 
 // --- SUMMARY TAB ---
