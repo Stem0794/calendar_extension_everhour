@@ -19,7 +19,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; background: #
   white-space: nowrap;
   display: flex;
   align-items: center;
-  background: transparent;
+  background: inherit;
 }
 .summary-table td.action button,
 .summary-table td.actions button {
@@ -31,7 +31,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; background: #
 th { background: #eef3f9; color: #444; font-weight: 500; font-size: 14px; border-bottom: 1px solid #e6eaf2; padding: 9px 8px; text-align: left; }
 td { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #222; vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
-tr:hover td:not(.action):not(.actions) {
+tr:hover td {
   background: #f1f6fb;
   transition: background 0.12s;
 }
