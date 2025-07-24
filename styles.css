@@ -19,7 +19,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; background: #
   white-space: nowrap;
   display: flex;
   align-items: center;
-  background: inherit;
+  background: transparent;
 }
 .summary-table td.action button,
 .summary-table td.actions button {
@@ -31,7 +31,10 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; background: #
 th { background: #eef3f9; color: #444; font-weight: 500; font-size: 14px; border-bottom: 1px solid #e6eaf2; padding: 9px 8px; text-align: left; }
 td { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #222; vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
-tr:hover td { background: #f1f6fb; transition: background 0.12s; }
+tr:hover td:not(.action):not(.actions) {
+  background: #f1f6fb;
+  transition: background 0.12s;
+}
 button, select, input[type="text"], input[type="color"] { font-size: 14px; border-radius: 6px; border: 1px solid #bfc6d2; background: #f4f7fa; color: #1d273b; outline: none; margin-top: 10px; margin-bottom: 4px; padding: 6px 14px; transition: border 0.13s; }
 button { background: #4f8cff; color: #fff; border: none; margin-top: 16px; cursor: pointer; font-weight: 500; padding: 8px 18px; box-shadow: 0 1px 2px #4f8cff11; transition: background 0.18s; }
 button:hover { background: #356cd2; }
