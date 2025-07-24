@@ -21,6 +21,16 @@ function addAlpha(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function getWeekKey(title, events) {
+  if (!Array.isArray(events) || !events.length) return title || '';
+  const d = new Date(events[0].date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  const week = monday.toISOString().slice(0, 10);
+  return `${title}|${week}`;
+}
+
 // --- ONBOARDING ---
 async function maybeShowOnboarding() {
   const { onboarded } = await chrome.storage.local.get("onboarded");
@@ -89,7 +99,7 @@ async function setMeetingToProjectMap(map) {
 }
 
 // --- EVERHOUR INTEGRATION ---
-async function sendToEverhour(title, eventsArr, assignedProject, btn) {
+async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
   const { everhourToken = '' } = await storage.get('everhourToken');
   if (!everhourToken) {
     alert('Please set your Everhour token');
@@ -142,6 +152,11 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
     btn.dataset.entryIds = JSON.stringify(entryIds);
     btn.textContent = '✓';
     btn.disabled = false;
+    if (key) {
+      const { everhourEntries = {} } = await storage.get('everhourEntries');
+      everhourEntries[key] = entryIds;
+      await storage.set({ everhourEntries });
+    }
   } catch (e) {
     console.error(e);
     btn.textContent = 'Error';
@@ -159,10 +174,20 @@ async function removeFromEverhour(btn) {
     alert('Please set your Everhour token');
     return;
   }
-  const ids = JSON.parse(btn.dataset.entryIds || '[]');
+  const weekKey = btn.dataset.weekKey || '';
+  let ids = JSON.parse(btn.dataset.entryIds || '[]');
+  if (!ids.length && weekKey) {
+    const { everhourEntries = {} } = await storage.get('everhourEntries');
+    ids = everhourEntries[weekKey] || [];
+  }
   if (!ids.length) {
     btn.dataset.sent = 'false';
     btn.textContent = '+';
+    if (weekKey) {
+      const { everhourEntries = {} } = await storage.get('everhourEntries');
+      delete everhourEntries[weekKey];
+      await storage.set({ everhourEntries });
+    }
     return;
   }
   btn.disabled = true;
@@ -180,6 +205,11 @@ async function removeFromEverhour(btn) {
     btn.dataset.entryIds = '';
     btn.textContent = '+';
     btn.disabled = false;
+    if (weekKey) {
+      const { everhourEntries = {} } = await storage.get('everhourEntries');
+      delete everhourEntries[weekKey];
+      await storage.set({ everhourEntries });
+    }
   } catch (e) {
     console.error(e);
     btn.textContent = 'Error';
@@ -207,6 +237,7 @@ async function loadSummary() {
       }
       const { projects = [] } = await storage.get('projects');
       const map = await getMeetingToProjectMap();
+      const { everhourEntries = {} } = await storage.get('everhourEntries');
       // --- WEEK FILTER ---
       if (filter === 'week') {
         // Week logic
@@ -261,18 +292,21 @@ async function loadSummary() {
           td.appendChild(sel);
           tr.appendChild(td);
           const addTd = document.createElement('td');
+          addTd.className = 'actions';
           const addBtn = document.createElement('button');
           addBtn.className = 'everhour-btn';
-          addBtn.textContent = '+';
           addBtn.title = 'Add to Everhour';
-          addBtn.style.marginTop = '0';
           const remBtn = document.createElement('button');
           remBtn.className = 'remove-btn';
-          remBtn.textContent = '✕';
           remBtn.title = 'Remove entry';
-          remBtn.style.marginTop = '0';
           const titleEvents = events.filter(ev => ev.title === title);
-          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn);
+          const weekKey = getWeekKey(title, titleEvents);
+          addBtn.dataset.weekKey = weekKey;
+          const storedIds = everhourEntries[weekKey] || [];
+          addBtn.dataset.entryIds = JSON.stringify(storedIds);
+          addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
+          addBtn.textContent = storedIds.length ? '✓' : '+';
+          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
           remBtn.onclick = () => removeFromEverhour(addBtn);
           addTd.appendChild(addBtn);
           addTd.appendChild(remBtn);
@@ -345,18 +379,21 @@ async function loadSummary() {
           td.appendChild(sel);
           tr.appendChild(td);
           const addTd = document.createElement('td');
+          addTd.className = 'actions';
           const addBtn = document.createElement('button');
           addBtn.className = 'everhour-btn';
-          addBtn.textContent = '+';
           addBtn.title = 'Add to Everhour';
-          addBtn.style.marginTop = '0';
           const remBtn = document.createElement('button');
           remBtn.className = 'remove-btn';
-          remBtn.textContent = '✕';
           remBtn.title = 'Remove entry';
-          remBtn.style.marginTop = '0';
           const titleEvents = filteredEvents.filter(ev => ev.title === title);
-          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn);
+          const weekKey = getWeekKey(title, titleEvents);
+          addBtn.dataset.weekKey = weekKey;
+          const storedIds = everhourEntries[weekKey] || [];
+          addBtn.dataset.entryIds = JSON.stringify(storedIds);
+          addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
+          addBtn.textContent = storedIds.length ? '✓' : '+';
+          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
           remBtn.onclick = () => removeFromEverhour(addBtn);
           addTd.appendChild(addBtn);
           addTd.appendChild(remBtn);
