@@ -114,7 +114,8 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
   }
   btn.disabled = true;
   const prev = btn.dataset.sent === 'true' ? '✓' : '+';
-  btn.textContent = 'Sending...';
+  btn.textContent = '⌛';
+  const entryIds = [];
   try {
     for (const ev of eventsToSend) {
       const { date, duration, comment = '' } = ev;
@@ -134,8 +135,11 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
       if (!res.ok) {
         throw new Error('Request failed');
       }
+      const data = await res.json().catch(() => null);
+      if (data && data.id) entryIds.push(data.id);
     }
     btn.dataset.sent = 'true';
+    btn.dataset.entryIds = JSON.stringify(entryIds);
     btn.textContent = '✓';
     btn.disabled = false;
   } catch (e) {
@@ -146,6 +150,43 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn) {
       btn.disabled = false;
     }, 2000);
     return;
+  }
+}
+
+async function removeFromEverhour(btn) {
+  const { everhourToken = '' } = await storage.get('everhourToken');
+  if (!everhourToken) {
+    alert('Please set your Everhour token');
+    return;
+  }
+  const ids = JSON.parse(btn.dataset.entryIds || '[]');
+  if (!ids.length) {
+    btn.dataset.sent = 'false';
+    btn.textContent = '+';
+    return;
+  }
+  btn.disabled = true;
+  const prev = btn.textContent;
+  btn.textContent = '⌛';
+  try {
+    for (const id of ids) {
+      const res = await fetch(`https://api.everhour.com/time/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-Api-Key': everhourToken }
+      });
+      if (!res.ok) throw new Error('Request failed');
+    }
+    btn.dataset.sent = 'false';
+    btn.dataset.entryIds = '';
+    btn.textContent = '+';
+    btn.disabled = false;
+  } catch (e) {
+    console.error(e);
+    btn.textContent = 'Error';
+    setTimeout(() => {
+      btn.textContent = prev;
+      btn.disabled = false;
+    }, 2000);
   }
 }
 
@@ -225,9 +266,16 @@ async function loadSummary() {
           addBtn.textContent = '+';
           addBtn.title = 'Add to Everhour';
           addBtn.style.marginTop = '0';
+          const remBtn = document.createElement('button');
+          remBtn.className = 'remove-btn';
+          remBtn.textContent = '✕';
+          remBtn.title = 'Remove entry';
+          remBtn.style.marginTop = '0';
           const titleEvents = events.filter(ev => ev.title === title);
           addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn);
+          remBtn.onclick = () => removeFromEverhour(addBtn);
           addTd.appendChild(addBtn);
+          addTd.appendChild(remBtn);
           tr.appendChild(addTd);
           table.appendChild(tr);
         }
@@ -302,9 +350,16 @@ async function loadSummary() {
           addBtn.textContent = '+';
           addBtn.title = 'Add to Everhour';
           addBtn.style.marginTop = '0';
+          const remBtn = document.createElement('button');
+          remBtn.className = 'remove-btn';
+          remBtn.textContent = '✕';
+          remBtn.title = 'Remove entry';
+          remBtn.style.marginTop = '0';
           const titleEvents = filteredEvents.filter(ev => ev.title === title);
           addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn);
+          remBtn.onclick = () => removeFromEverhour(addBtn);
           addTd.appendChild(addBtn);
+          addTd.appendChild(remBtn);
           tr.appendChild(addTd);
           table.appendChild(tr);
         }

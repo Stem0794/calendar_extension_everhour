@@ -71,4 +71,104 @@ assert.deepStrictEqual(p, { start:'9h00 ', end:'10h00 ', title:'Réunion', durat
 p = parseSample('from 9:00 to 10:00 Meeting + Notes');
 assert.deepStrictEqual(p, { start:'9:00 ', end:'10:00 ', title:'Meeting', duration:60, comment:'Notes' });
 
-console.log('All tests passed.');
+// Additional regex samples
+p = parseSample('from 1pm to 2:30pm Demo');
+assert.deepStrictEqual(p, { start:'1pm', end:'2:30pm', title:'Demo', duration:90, comment:'' });
+
+p = parseSample('de 13h00 à 14h30 Rendez-vous + Plan');
+assert.deepStrictEqual(p, { start:'13h00 ', end:'14h30 ', title:'Rendez-vous', duration:90, comment:'Plan' });
+
+// --- Everhour integration logic ---
+const alerts = [];
+global.alert = msg => alerts.push(msg);
+
+const storage = {
+  data: { everhourToken:'t', projects:[{ name:'Proj', taskId:123 }] },
+  async get(key){ return { [key]: this.data[key] }; }
+};
+
+let calls = [];
+global.fetch = async (url, opts) => {
+  calls.push({ url, opts });
+  return { ok:true, json: async () => ({ id: 'id'+calls.length }) };
+};
+
+async function sendToEverhour(title, eventsArr, assignedProject, btn){
+  const { everhourToken='' } = await storage.get('everhourToken');
+  if(!everhourToken){ alert('Please set your Everhour token'); return; }
+  if(!assignedProject){ alert('Select a project for this meeting'); return; }
+  const { projects=[] } = await storage.get('projects');
+  const taskId = projects.find(p=>p.name===assignedProject)?.taskId;
+  if(!taskId){ alert('Project is missing Everhour task ID'); return; }
+  const eventsToSend = Array.isArray(eventsArr) ? eventsArr.filter(ev=>ev.title===title) : [];
+  if(!eventsToSend.length){ alert('Could not find event details'); return; }
+  btn.disabled = true;
+  const prev = btn.dataset.sent==='true'?'✓':'+';
+  btn.textContent = '⌛';
+  const entryIds = [];
+  try{
+    for(const ev of eventsToSend){
+      const { date, duration, comment='' } = ev;
+      const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'X-Api-Key':everhourToken },
+        body: JSON.stringify({ task:taskId, date, time:Math.round(duration*60), comment })
+      });
+      if(!res.ok) throw new Error('Request failed');
+      const data = await res.json().catch(()=>null);
+      if(data && data.id) entryIds.push(data.id);
+    }
+    btn.dataset.sent='true';
+    btn.dataset.entryIds = JSON.stringify(entryIds);
+    btn.textContent='✓';
+    btn.disabled=false;
+  }catch(e){
+    btn.textContent='Error';
+    setTimeout(()=>{ btn.textContent=prev; btn.disabled=false; },2000);
+  }
+}
+
+async function removeFromEverhour(btn){
+  const { everhourToken='' } = await storage.get('everhourToken');
+  if(!everhourToken){ alert('Please set your Everhour token'); return; }
+  const ids = JSON.parse(btn.dataset.entryIds || '[]');
+  if(!ids.length){ btn.dataset.sent='false'; btn.textContent='+'; return; }
+  btn.disabled=true;
+  const prev = btn.textContent;
+  btn.textContent='⌛';
+  try{
+    for(const id of ids){
+      const res = await fetch(`https://api.everhour.com/time/${id}`, { method:'DELETE', headers:{'X-Api-Key':everhourToken} });
+      if(!res.ok) throw new Error('Request failed');
+    }
+    btn.dataset.sent='false';
+    btn.dataset.entryIds='';
+    btn.textContent='+';
+    btn.disabled=false;
+  }catch(e){
+    btn.textContent='Error';
+    setTimeout(()=>{ btn.textContent=prev; btn.disabled=false; },2000);
+  }
+}
+
+const btn = { disabled:false, textContent:'+', dataset:{} };
+const events = [{ title:'Meeting', date:'2025-01-01', duration:1, comment:'Test' }];
+
+(async () => {
+  await sendToEverhour('Meeting', events, 'Proj', btn);
+  assert.strictEqual(btn.dataset.sent, 'true');
+  assert.strictEqual(btn.textContent, '✓');
+  assert.deepStrictEqual(JSON.parse(btn.dataset.entryIds), ['id1']);
+  assert.strictEqual(calls[0].url, 'https://api.everhour.com/tasks/123/time');
+  assert.strictEqual(JSON.parse(calls[0].opts.body).comment, 'Test');
+
+  calls = [];
+  await removeFromEverhour(btn);
+  assert.strictEqual(btn.dataset.sent, 'false');
+  assert.strictEqual(btn.textContent, '+');
+  assert.strictEqual(btn.dataset.entryIds, '');
+  assert.strictEqual(calls[0].url, 'https://api.everhour.com/time/id1');
+  assert.strictEqual(calls[0].opts.method, 'DELETE');
+
+  console.log('All tests passed.');
+})();
