@@ -135,6 +135,29 @@ function setupPopup(events){
   return {sb,document};
 }
 
+// Tests for unknown month handling in content.js
+const fs = require('fs');
+const vm = require('vm');
+
+function runParse(text){
+  const code = fs.readFileSync('content.js', 'utf8');
+  const ctx = {
+    document: { querySelectorAll: () => [{ querySelector: () => ({ textContent: text }) }] },
+    chrome: { runtime: { onMessage: { addListener: () => {} } } },
+    console
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code, ctx);
+  return ctx.parseEventsFromWeekView();
+}
+
+let eventsParsed = runParse('5 aug 2023 from 9:00 to 10:00 Meeting');
+assert.strictEqual(eventsParsed.length, 1);
+assert.strictEqual(eventsParsed[0].date, '2023-08-05');
+
+eventsParsed = runParse('5 agosto 2023 from 9:00 to 10:00 Meeting');
+assert.strictEqual(eventsParsed.length, 0);
+
 // --- Everhour integration logic ---
 const alerts = [];
 global.alert = msg => alerts.push(msg);
