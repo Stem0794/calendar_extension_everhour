@@ -5,6 +5,14 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
+function quoteField(value) {
+  const str = String(value ?? '');
+  if(/[",\n]/.test(str)) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
 // Load and save Everhour token
 async function loadEverhourToken() {
   const { everhourToken = '' } = await storage.get('everhourToken');
@@ -128,6 +136,37 @@ document.getElementById('add-project').onclick = async () => {
   inp.value = '';
   document.getElementById('new-project-keywords').value = '';
   document.getElementById('new-project-task').value = '';
+};
+
+// Export hours (week only)
+document.getElementById('export-hours').onclick = () => {
+  const range = document.getElementById('export-range').value;
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async events => {
+      if (!Array.isArray(events) || !events.length) {
+        alert('No events found. Open Google Calendar in Week View.');
+        return;
+      }
+      const { meetingProjectMap = {} } = await storage.get('meetingProjectMap');
+      const totals = {};
+      for (const ev of events) {
+        const project = meetingProjectMap[ev.title] || '';
+        if (!project) continue;
+        totals[project] = (totals[project] || 0) + ev.duration;
+      }
+      const rows = Object.entries(totals).map(([p, mins]) => [p, Math.round((mins / 60) * 100) / 100]);
+      const csvRows = [['Project', 'Hours']];
+      rows.forEach(r => csvRows.push(r));
+      const csv = csvRows.map(r => r.map(quoteField).join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hours_${range}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  });
 };
 
 // Init
