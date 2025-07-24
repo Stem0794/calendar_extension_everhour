@@ -53,6 +53,11 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 
 Run `node test.js` to check script syntax and sample parsing. Node.js must be installed.
 
+## Development Notes
+
+- Duplicated styles in `popup.html` and `options.html` were consolidated into a shared
+  `styles.css` file to simplify maintenance.
+
 ## 👤 Author
 GitHub: [@Stem0794](https://github.com/Stem0794)
 

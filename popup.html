@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Weekly Calendar Project Tracker</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
     body {
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
@@ -11,48 +12,6 @@
       min-width: 520px;
       min-height: 430px;
     }
-    #tabs { display: flex; border-bottom: 1px solid #e1e4ea; background: #fff; }
-    .tab { flex: 1; padding: 12px 0 10px 0; cursor: pointer; border: none; background: none; font-size: 15px; color: #777; transition: color 0.15s; text-align: center; letter-spacing: 0.03em; }
-    .tab.active { color: #222; font-weight: bold; border-bottom: 2.5px solid #4f8cff; background: #f7fbff; }
-    .tab-content { display: none; padding: 22px 18px 10px 18px; min-height: 290px; background: #fff; }
-    .tab-content.active { display: block; }
-    table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fafbfc; margin-top: 12px; box-shadow: 0 1px 2px #e1e4ea44; border-radius: 8px; overflow: hidden; }
-    .summary-table { table-layout: fixed; overflow: visible; }
-    .summary-table th:first-child,
-    .summary-table td:first-child { width: 40%; word-break: break-word; }
-    .summary-table th:nth-child(2),
-    .summary-table td:nth-child(2) { width: 15%; }
-    .summary-table th:nth-child(3),
-    .summary-table td:nth-child(3) { width: 35%; }
-    .summary-table th:nth-child(4),
-    .summary-table td:nth-child(4) { width: 10%; }
-    .summary-table select { min-width: 100px; width: 100%; }
-    .summary-table td.actions { white-space: nowrap; display:flex; align-items:center; }
-    .summary-table td.actions button { width: auto; margin-top: 0; }
-    .everhour-btn { width: 28px; padding: 4px; font-weight:bold; }
-    .remove-btn { width: 28px; padding: 4px; font-weight:bold; margin-left:4px; background:#fff; color:#c52929; border:1px solid #ebebeb; }
-    th { background: #eef3f9; color: #444; font-weight: 500; font-size: 14px; border-bottom: 1px solid #e6eaf2; padding: 9px 8px; text-align: left; }
-    td { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #222; vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f1f6fb; transition: background 0.12s; }
-    button, select, input[type="text"], input[type="color"] { font-size: 14px; border-radius: 6px; border: 1px solid #bfc6d2; background: #f4f7fa; color: #1d273b; outline: none; margin-top: 10px; margin-bottom: 4px; padding: 6px 14px; transition: border 0.13s; }
-    button { background: #4f8cff; color: #fff; border: none; margin-top: 16px; cursor: pointer; font-weight: 500; padding: 8px 18px; box-shadow: 0 1px 2px #4f8cff11; transition: background 0.18s; }
-    button:hover { background: #356cd2; }
-    select { background: #fff; border: 1px solid #bfc6d2; min-width: 90px; margin-left: 4px; margin-top: 0; height: 32px; }
-    input[type="text"] { padding: 7px 12px; width: 60%; background: #fff; margin-right: 4px; }
-    .delete-btn { color: #c52929; background: #fff; border: 1px solid #ebebeb; margin-left: 9px; padding: 3px 10px; font-size: 13px; border-radius: 4px; transition: background 0.16s; }
-    .delete-btn:hover { background: #fae5e5; border-color: #f0bbbb; }
-    #project-list { margin-top: 16px; list-style: none; padding: 0; }
-    #project-list li { padding: 5px 0; display: flex; align-items: center; font-size: 14px; color: #333; border-bottom: 1px solid #f2f2f2; }
-    #project-list li:last-child { border-bottom: none; }
-    .footer { font-size: 11px; color: #9fa6b7; text-align: right; margin: 18px 10px 4px 0; letter-spacing: 0.03em; }
-    .filter-bar { margin-bottom: 8px; }
-    .color-dot { display:inline-block; width:13px; height:13px; border-radius:50%; margin-right:6px; border: 1px solid #d1d3e0; vertical-align:middle; }
-    .keyword-input { width:110px; margin-left: 4px;}
-    .rename-input { width:95px; margin-right: 4px;}
-    .task-input { width:90px; margin-left: 4px; }
-    .onboarding-tip { background: #e3edfa; color: #294365; font-size: 14px; padding: 10px 14px; border-radius: 7px; margin-bottom: 13px; border: 1px solid #aac7e6; }
-    .edit-btn, .save-btn, .cancel-btn { margin-left: 6px; font-size:12px; padding:3px 7px;}
   </style>
 </head>
 <body>
