@@ -5,6 +5,24 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
+async function addLog(message) {
+  const { logs = [] } = await storage.get('logs');
+  logs.push({ msg: message, date: new Date().toLocaleString() });
+  await storage.set({ logs });
+}
+
+async function loadLogs() {
+  const { logs = [] } = await storage.get('logs');
+  const list = document.getElementById('log-list');
+  if (!list) return;
+  list.innerHTML = '';
+  logs.slice().reverse().forEach(l => {
+    const li = document.createElement('li');
+    li.textContent = `[${l.date}] ${l.msg}`;
+    list.appendChild(li);
+  });
+}
+
 
 // Load and save Everhour token
 async function loadEverhourToken() {
@@ -15,9 +33,11 @@ async function loadEverhourToken() {
 async function saveEverhourToken() {
   const token = document.getElementById('everhour-token').value.trim();
   await storage.set({ everhourToken: token });
+  await addLog('Everhour token updated');
   const status = document.getElementById('token-status');
   status.textContent = 'Saved!';
   setTimeout(() => { status.textContent = ''; }, 1500);
+  loadLogs();
 }
 
 document.getElementById('save-token').onclick = saveEverhourToken;
@@ -135,3 +155,7 @@ document.getElementById('add-project').onclick = async () => {
 // Init
 loadEverhourToken();
 renderProjectList();
+loadLogs();
+chrome.storage.onChanged.addListener(changes => {
+  if (changes.logs) loadLogs();
+});

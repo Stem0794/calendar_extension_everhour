@@ -94,6 +94,8 @@ global.fetch = async (url, opts) => {
   return { ok:true, json: async () => ({ id: 'id'+calls.length }) };
 };
 
+async function addLog() {}
+
 async function sendToEverhour(title, eventsArr, assignedProject, btn, key){
   const { everhourToken='' } = await storage.get('everhourToken');
   if(!everhourToken){ alert('Please set your Everhour token'); return; }
@@ -132,40 +134,46 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key){
   }
 }
 
-async function removeFromEverhour(btn){
+async function removeFromEverhour(addBtn, remBtn){
   const { everhourToken='' } = await storage.get('everhourToken');
   if(!everhourToken){ alert('Please set your Everhour token'); return; }
-  const key = btn.dataset.weekKey || '';
-  let ids = JSON.parse(btn.dataset.entryIds || '[]');
+  const key = addBtn.dataset.weekKey || '';
+  let ids = JSON.parse(addBtn.dataset.entryIds || '[]');
   if(!ids.length && key){
     ids = storage.data.everhourEntries[key] || [];
   }
   if(!ids.length){
-    btn.dataset.sent='false';
-    btn.textContent='+';
+    addBtn.dataset.sent='false';
+    addBtn.textContent='+';
     if(key) delete storage.data.everhourEntries[key];
+    remBtn.textContent='✓';
+    setTimeout(()=>{ remBtn.textContent='×'; },3000);
     return;
   }
-  btn.disabled=true;
-  const prev = btn.textContent;
-  btn.textContent='⌛';
+  addBtn.disabled=true;
+  remBtn.disabled=true;
+  const prev = remBtn.textContent;
+  remBtn.textContent='⌛';
   try{
     for(const id of ids){
       const res = await fetch(`https://api.everhour.com/time/${id}`, { method:'DELETE', headers:{'X-Api-Key':everhourToken} });
       if(!res.ok) throw new Error('Request failed');
     }
-    btn.dataset.sent='false';
-    btn.dataset.entryIds='';
-    btn.textContent='+';
-    btn.disabled=false;
+    addBtn.dataset.sent='false';
+    addBtn.dataset.entryIds='';
+    addBtn.textContent='+';
+    addBtn.disabled=false;
+    remBtn.textContent='✓';
+    setTimeout(()=>{ remBtn.textContent='×'; remBtn.disabled=false; },3000);
     if(key) delete storage.data.everhourEntries[key];
   }catch(e){
-    btn.textContent='Error';
-    setTimeout(()=>{ btn.textContent=prev; btn.disabled=false; },2000);
+    remBtn.textContent='Error';
+    setTimeout(()=>{ remBtn.textContent=prev; addBtn.disabled=false; remBtn.disabled=false; },2000);
   }
 }
 
 const btn = { disabled:false, textContent:'+', dataset:{} };
+const rem = { disabled:false, textContent:'×' };
 const events = [{ title:'Meeting', date:'2025-01-01', duration:1, comment:'Test' }];
 const weekKey = 'Meeting|2024-12-30';
 btn.dataset.weekKey = weekKey;
@@ -180,9 +188,10 @@ btn.dataset.weekKey = weekKey;
   assert.deepStrictEqual(storage.data.everhourEntries[weekKey], ['id1']);
 
   calls = [];
-  await removeFromEverhour(btn);
+  await removeFromEverhour(btn, rem);
   assert.strictEqual(btn.dataset.sent, 'false');
   assert.strictEqual(btn.textContent, '+');
+  assert.strictEqual(rem.textContent, '✓');
   assert.strictEqual(btn.dataset.entryIds, '');
   assert.deepStrictEqual(storage.data.everhourEntries[weekKey], undefined);
   assert.strictEqual(calls[0].url, 'https://api.everhour.com/time/id1');
