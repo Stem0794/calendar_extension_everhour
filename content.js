@@ -39,12 +39,24 @@ function parseEventsFromWeekView() {
         day = dateMatch[2].padStart(2, '0');
         year = dateMatch[3] || new Date().getFullYear();
       }
-      let monthIdx = months.indexOf(month) % 12 + 1;
-      monthIdx = monthIdx < 10 ? '0' + monthIdx : '' + monthIdx;
-      date = `${year}-${monthIdx}-${day}`;
-      const d = new Date(`${year}-${monthIdx}-${day}`);
-      dayOfWeek = d.getDay();
-      dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      let idx = months.indexOf(month);
+      if (idx === -1) {
+        const parsed = Date.parse(dateMatch[0]);
+        if (isNaN(parsed)) return; // skip unknown month
+        const d = new Date(parsed);
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        date = `${d.getFullYear()}-${m}-${dd}`;
+        dayOfWeek = d.getDay();
+        dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      } else {
+        let monthIdx = (idx % 12) + 1;
+        monthIdx = monthIdx < 10 ? '0' + monthIdx : '' + monthIdx;
+        date = `${year}-${monthIdx}-${day}`;
+        const d = new Date(`${year}-${monthIdx}-${day}`);
+        dayOfWeek = d.getDay();
+        dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      }
     }
     let cleanTitle = rawTitle.replace(/\s*•.*$/, '').split('\n')[0].trim();
     const commaIdx = cleanTitle.indexOf(',');
