@@ -20,9 +20,15 @@ const samples = [
 samples.forEach(text => {
   const m = text.match(regex);
   if (m) {
-    const [, start, end, title] = m;
+    let [, start, end, title] = m;
+    let comment = '';
+    const plusIdx = title.indexOf('+');
+    if (plusIdx !== -1) {
+      comment = title.slice(plusIdx + 1).trim();
+      title = title.slice(0, plusIdx).trim();
+    }
     const duration = toMinutes(end) - toMinutes(start);
-    console.log(`Parsed "${text}" ->`, { start, end, title, duration });
+    console.log(`Parsed "${text}" ->`, { start, end, title, duration, comment });
   } else {
     console.log(`No match for "${text}"`);
   }
