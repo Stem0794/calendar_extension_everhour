@@ -47,6 +47,12 @@ async function renderProjectList() {
   const { projects = [] } = await storage.get('projects');
   const list = document.getElementById('project-list');
   list.innerHTML = '';
+  const groupBounds = {};
+  projects.forEach((p,i)=>{
+    const g = p.group || '';
+    if(!groupBounds[g]) groupBounds[g] = {first:i,last:i};
+    else groupBounds[g].last = i;
+  });
   let lastGroup = null;
   projects.forEach((proj, idx) => {
     if (proj.group !== lastGroup) {
@@ -59,6 +65,9 @@ async function renderProjectList() {
     const li = document.createElement('li');
     li.style.alignItems = 'center';
     const dot = `<span class="color-dot" style="background:${proj.color||'#c1d6f9'};"></span>`;
+    const bounds = groupBounds[proj.group || ''];
+    const showUp = idx > bounds.first;
+    const showDown = idx < bounds.last;
     if (proj._edit) {
       li.innerHTML = `${dot}<input type="text" class="rename-input" value="${proj.name}" id="rename-proj-${idx}"/>`
         + `<input type="color" id="edit-color-${idx}" value="${proj.color||'#42a5f5'}" style="margin-left:6px;width:32px;"/>`
@@ -72,8 +81,8 @@ async function renderProjectList() {
         + (proj.taskId ? `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">(${proj.taskId})</span>` : '')
         + `<button class="edit-btn" data-idx="${idx}">Edit</button>`
         + `<button class="delete-btn" data-idx="${idx}" title="Delete">Delete</button>`
-        + `<button class="move-btn up" data-idx="${idx}" title="Move up">↑</button>`
-        + `<button class="move-btn down" data-idx="${idx}" title="Move down">↓</button>`;
+        + (showUp ? `<button class="move-btn up" data-idx="${idx}" title="Move up">↑</button>` : '')
+        + (showDown ? `<button class="move-btn down" data-idx="${idx}" title="Move down">↓</button>` : '');
     }
     list.appendChild(li);
   });
