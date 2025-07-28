@@ -2,6 +2,7 @@
 .tab { flex: 1; padding: 12px 0 10px 0; cursor: pointer; border: none; background: none; font-size: 15px; color: #666; transition: color 0.15s; text-align: center; letter-spacing: 0.03em; }
 .tab.active { color: #222; font-weight: 600; border-bottom: 3px solid #4f8cff; background: linear-gradient(#f7fbff, #eef6ff); }
 .tab-content { display: none; padding: 22px 18px 10px 18px; min-height: 290px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border-radius: 0 0 8px 8px; }
+.tab-content { display: none; padding: 22px 18px 10px 18px; min-height: 290px; background: #fff; border: 1px solid #e1e4ea; border-top: none; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border-radius: 0 0 8px 8px; }
 .tab-content.active { display: block; }
 table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fafbfc; margin-top: 12px; box-shadow: 0 1px 2px #e1e4ea44; border-radius: 8px; overflow: hidden; }
 .summary-table { table-layout: fixed; overflow: visible; }
