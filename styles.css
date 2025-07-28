@@ -1,7 +1,7 @@
-#tabs { display: flex; border-bottom: 1px solid #e1e4ea; background: #fff; }
-.tab { flex: 1; padding: 12px 0 10px 0; cursor: pointer; border: none; background: none; font-size: 15px; color: #777; transition: color 0.15s; text-align: center; letter-spacing: 0.03em; }
-.tab.active { color: #222; font-weight: bold; border-bottom: 2.5px solid #4f8cff; background: #f7fbff; }
-.tab-content { display: none; padding: 22px 18px 10px 18px; min-height: 290px; background: #fff; }
+#tabs { display: flex; border-bottom: 1px solid #e1e4ea; background: #fff; border-radius: 8px 8px 0 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.tab { flex: 1; padding: 12px 0 10px 0; cursor: pointer; border: none; background: none; font-size: 15px; color: #666; transition: color 0.15s; text-align: center; letter-spacing: 0.03em; }
+.tab.active { color: #222; font-weight: 600; border-bottom: 3px solid #4f8cff; background: linear-gradient(#f7fbff, #eef6ff); }
+.tab-content { display: none; padding: 22px 18px 10px 18px; min-height: 290px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border-radius: 0 0 8px 8px; }
 .tab-content.active { display: block; }
 table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fafbfc; margin-top: 12px; box-shadow: 0 1px 2px #e1e4ea44; border-radius: 8px; overflow: hidden; }
 .summary-table { table-layout: fixed; overflow: visible; }
@@ -57,3 +57,4 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: #fff; margin-rig
 .move-btn:hover { background:#f0f2f5; }
 .onboarding-tip { background: #e3edfa; color: #294365; font-size: 14px; padding: 10px 14px; border-radius: 7px; margin-bottom: 13px; border: 1px solid #aacee6; }
 .edit-btn, .save-btn, .cancel-btn { margin-left: 6px; font-size:12px; padding:3px 7px; }
+.log-list { list-style:none; padding:8px; border:1px solid #e1e4ea; border-radius:6px; max-height:150px; overflow-y:auto; font-size:13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }

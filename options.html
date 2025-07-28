@@ -9,7 +9,7 @@
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
       background: #f0f2f5;
       margin: 0;
-      min-width: 460px;
+      min-width: 560px;
       min-height: 430px;
       display: flex;
       justify-content: center;
@@ -17,10 +17,11 @@
     }
     #settings-wrapper {
       width: 100%;
-      max-width: 620px;
+      max-width: 760px;
       background: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border: 1px solid #e1e4ea;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.06);
       padding: 20px;
     }
     .summary-table select { min-width: 160px; width: 100%; }
@@ -32,28 +33,40 @@
 <body>
   <div id="settings-wrapper">
     <h2 style="margin-top:0;">Settings</h2>
-    <div id="settings" class="tab-content active" style="padding:0;">
-    <div>
-      <input type="text" id="new-project" placeholder="New project name" autocomplete="off"/>
-      <input type="color" id="new-project-color" value="#42a5f5" title="Project color"/>
-      <input type="text" id="new-project-keywords" placeholder="Keywords, comma-separated" class="keyword-input" autocomplete="off"/>
-      <input type="text" id="new-project-task" placeholder="Task ID" class="task-input" autocomplete="off"/>
-      <input type="text" id="new-project-group" placeholder="Group" class="group-input" autocomplete="off"/>
-      <button id="add-project">Add</button>
+    <div id="tabs">
+      <div class="tab active" data-tab="projects">Projects</div>
+      <div class="tab" data-tab="everhour">Everhour</div>
+      <div class="tab" data-tab="activity">Activity</div>
     </div>
-    <ul id="project-list"></ul>
-    <div style="margin-top:16px;">
+
+    <div id="projects" class="tab-content active" style="padding:0;">
+      <div>
+        <input type="text" id="new-project" placeholder="New project name" autocomplete="off"/>
+        <input type="color" id="new-project-color" value="#42a5f5" title="Project color"/>
+        <input type="text" id="new-project-keywords" placeholder="Keywords, comma-separated" class="keyword-input" autocomplete="off"/>
+        <input type="text" id="new-project-task" placeholder="Task ID" class="task-input" autocomplete="off"/>
+        <input type="text" id="new-project-group" placeholder="Group" class="group-input" autocomplete="off"/>
+        <button id="add-project">Add</button>
+      </div>
+      <ul id="project-list"></ul>
+    </div>
+
+    <div id="everhour" class="tab-content">
       <label for="everhour-token" style="font-size:13px;">Everhour API Token:</label>
       <input type="text" id="everhour-token" placeholder="Token" class="task-input" autocomplete="off"/>
       <button id="save-token">Save</button>
       <span id="token-status" style="font-size:12px;margin-left:6px;"></span>
+      <div style="margin-top:20px;">
+        <button id="export-settings" style="margin-top:0;">Export Data</button>
+        <button id="import-settings" style="margin-left:6px;margin-top:0;">Import</button>
+        <input type="file" id="import-file" accept="application/json" style="margin-left:6px;" />
+        <a id="download-link" style="display:none;"></a>
+      </div>
     </div>
-    <h3 style="margin-top:20px;">Activity Log</h3>
-    <ul id="log-list" style="list-style:none;padding:8px;border:1px solid #e1e4ea;border-radius:6px;max-height:150px;overflow-y:auto;font-size:13px;"></ul>
-    <button id="export-settings" style="margin-top:10px;">Export Data</button>
-    <input type="file" id="import-file" accept="application/json" style="margin-left:6px;" />
-    <button id="import-settings">Import</button>
-    <a id="download-link" style="display:none;"></a>
+
+    <div id="activity" class="tab-content">
+      <h3 style="margin-top:0;">Activity Log</h3>
+      <ul id="log-list" class="log-list"></ul>
     </div>
   </div>
   <script src="options.js"></script>
