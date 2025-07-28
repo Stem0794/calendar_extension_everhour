@@ -19,7 +19,6 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; background: #
   white-space: nowrap;
   display: flex;
   align-items: center;
-  background: inherit;
 }
 .summary-table td.action button,
 .summary-table td.actions button {
@@ -29,7 +28,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; background: #
 .everhour-btn { width: 28px; padding: 4px; font-weight:bold; }
 .remove-btn { width: 28px; padding: 4px; font-weight:bold; margin-left:4px; background:#fff; color:#c52929; border:1px solid #ebebeb; }
 th { background: #eef3f9; color: #444; font-weight: 500; font-size: 14px; border-bottom: 1px solid #e6eaf2; padding: 9px 8px; text-align: left; }
-td { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #222; vertical-align: middle; }
+td { padding: 7px 8px; font-size: 14px; color: #222; vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 tr:hover td {
   background: #f1f6fb;
@@ -43,8 +42,8 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: #fff; margin-rig
 .delete-btn { color: #c52929; background: #fff; border: 1px solid #ebebeb; margin-left: 9px; padding: 3px 10px; font-size: 13px; border-radius: 4px; transition: background 0.16s; }
 .delete-btn:hover { background: #fae5e5; border-color: #f0bbbb; }
 #project-list { margin-top: 16px; list-style: none; padding: 0; }
-#project-list li { padding: 5px 0; display: flex; align-items: center; font-size: 14px; color: #333; border-bottom: 1px solid #f2f2f2; }
-#project-list li:last-child { border-bottom: none; }
+#project-list li { padding: 5px 8px; display: flex; align-items: center; font-size: 14px; color: #333; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px; }
+#project-list li:last-child { margin-bottom: 0; }
 .footer { font-size: 11px; color: #9fa6b7; text-align: right; margin: 18px 10px 4px 0; letter-spacing: 0.03em; }
 .filter-bar { margin-bottom: 8px; }
 .color-dot { display:inline-block; width:13px; height:13px; border-radius:50%; margin-right:6px; border: 1px solid #d1d3e0; vertical-align:middle; }
