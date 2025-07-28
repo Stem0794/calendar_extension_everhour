@@ -190,6 +190,21 @@ document.getElementById('add-project').onclick = async () => {
   document.getElementById('new-project-group').value = '';
 };
 
+// Export settings without API token
+async function exportSettings() {
+  const data = await storage.get(null);
+  delete data.everhourToken;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.getElementById('download-link');
+  link.href = url;
+  link.download = 'settings_export.json';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  addLog('Exported settings');
+}
+document.getElementById('export-settings').onclick = exportSettings;
+
 
 // Init
 loadEverhourToken();
