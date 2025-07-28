@@ -86,9 +86,10 @@ async function renderProjectList() {
         + `<input type="text" class="group-input" value="${proj.group||''}" id="edit-group-${idx}" placeholder="Group"/>`
         + `<button class="save-btn" data-idx="${idx}">Save</button><button class="cancel-btn" data-idx="${idx}">Cancel</button>`;
     } else {
+      const kw = (proj.keywords || []).join(', ');
+      const kwSpan = kw ? `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">[${kw}]</span>` : '';
       li.innerHTML = `${dot}<span>${proj.name}</span>`
-        + `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">[${(proj.keywords||[]).join(', ')}]</span>`
-        + (proj.taskId ? `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">(${proj.taskId})</span>` : '')
+        + kwSpan
         + `<button class="edit-btn" data-idx="${idx}">Edit</button>`
         + `<button class="delete-btn" data-idx="${idx}" title="Delete">Delete</button>`
         + (showUp ? `<button class="move-btn up" data-idx="${idx}" title="Move up">↑</button>` : '')
