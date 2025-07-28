@@ -15,6 +15,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 - Modern, clean UI
 - Reorder and group projects in settings
 - Export your settings and projects (excluding the API token)
+- Import settings from a JSON export file
 
 ## 🚀 How to Use
 
@@ -23,6 +24,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 3. Use the **Summary** tab to assign meetings to projects
 4. View project totals in the **Project Hours** tab
 5. In the **Settings** tab or full Settings page, enter your Everhour API token and each project's task ID
+6. Use the **Export Data** and **Import** buttons to back up or restore your settings
 > Tip: Add custom **keywords** when creating projects to auto-link new meetings in future weeks.
 
 ## 🗂 Tabs Overview
