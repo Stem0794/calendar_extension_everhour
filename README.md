@@ -56,7 +56,7 @@ Run `node test.js` to check script syntax and sample parsing. Node.js must be in
 
 ## 📚 Documentation
 
-Additional usage tips and troubleshooting guides are available in the [project wiki](wiki/Home.md).
+Additional usage tips and troubleshooting guides are available in the [project wiki](wiki/Home.md). The primary usage instructions are also mirrored in [wiki/How-to-use.md](wiki/How-to-use.md).
 
 ## Development Notes
 
