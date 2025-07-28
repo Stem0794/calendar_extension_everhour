@@ -111,7 +111,7 @@ assert.strictEqual(ev[0].comment,'Note');
 assert.strictEqual(ev[0].startTime,'14:00');
 
 // --- popup.js getWeekKey and dropdown tests ---
-class Element{constructor(t){this.tagName=t;this.children=[];this.innerHTML='';this.value='';this.style={};this.dataset={};this.classList={add(){},remove(){}};}appendChild(c){this.children.push(c);}}
+class Element{constructor(t){this.tagName=t;this.children=[];this.innerHTML='';this.value='';this.textContent='';this.style={};this.dataset={};this.classList={add(){},remove(){}};}appendChild(c){this.children.push(c);}}
 class Select extends Element{constructor(){super('select');this.options=[];this.selectedIndex=0;}set innerHTML(h){this._innerHTML=h;this.options=[];const r=/<option[^>]*>(.*?)<\/option>/gi;let m;while((m=r.exec(h))){const val=(m[0].match(/value="(.*?)"/)||[])[1]||'';this.options.push({value:val,text:m[1]});}}get innerHTML(){return this._innerHTML;}}
 const popupCode = fs.readFileSync('popup.js','utf8');
 function setupPopup(events){
@@ -284,6 +284,99 @@ btn.dataset.weekKey = weekKey;
   assert.deepStrictEqual(storage.data.everhourEntries[weekKey], undefined);
   assert.strictEqual(calls[0].url, 'https://api.everhour.com/time/id1');
   assert.strictEqual(calls[0].opts.method, 'DELETE');
+
+  // --- options.js export/import and grouping tests ---
+  const optionsCode = fs.readFileSync('options.js', 'utf8');
+  const optStorage = {
+    data: {
+      everhourToken: 'tok',
+      projects: [
+        { name: 'A', group: 'G1' },
+        { name: 'B', group: 'G1' },
+        { name: 'C', group: 'G2' }
+      ],
+      logs: []
+    },
+    async get(key) { if (key === null) return { ...this.data }; return { [key]: this.data[key] }; },
+    async set(obj) { Object.assign(this.data, obj); }
+  };
+  const doc2 = {
+    elements: {},
+    createElement: t => new Element(t),
+    getElementById(id) { return this.elements[id] || (this.elements[id] = new Element('div')); },
+    querySelectorAll() { return { forEach() { } }; },
+    querySelector() { return null; }
+  };
+  let optLogs = [];
+  function addLog2(msg) { optLogs.push(msg); }
+  let renderCalled = false;
+  let blobStr = '';
+  const BlobCls = class { constructor(parts) { blobStr = parts[0]; } };
+  let createdUrl = '';
+  const URLapi = { createObjectURL: b => { createdUrl = 'blob:url'; return createdUrl; }, revokeObjectURL() { } };
+  const chrome2 = {
+    storage: {
+      local: { get: k => optStorage.get(k), set: o => optStorage.set(o), remove() { } },
+      onChanged: { addListener() { } }
+    }
+  };
+  const ctx2 = {
+    console,
+    document: doc2,
+    chrome: chrome2,
+    storage: optStorage,
+    addLog: addLog2,
+    renderProjectList: () => { renderCalled = true; },
+    Blob: BlobCls,
+    URL: URLapi,
+    setTimeout: fn => fn(),
+    alert
+  };
+  vm.createContext(ctx2); vm.runInContext(optionsCode, ctx2);
+
+  await ctx2.exportSettings();
+  assert.strictEqual(doc2.getElementById('download-link').download, 'settings_export.json');
+  assert.strictEqual(createdUrl, 'blob:url');
+  assert.deepStrictEqual(JSON.parse(blobStr), {
+    projects: [
+      { name: 'A', group: 'G1' },
+      { name: 'B', group: 'G1' },
+      { name: 'C', group: 'G2' }
+    ],
+    logs: []
+  });
+  assert.ok(optLogs.includes('Exported settings'));
+
+  const fileInput = doc2.getElementById('import-file');
+  fileInput.files = [{ text: async () => JSON.stringify({ projects: [{ name: 'D', group: 'G2' }], logs: ['x'], everhourToken: 'x' }) }];
+  fileInput.value = 'f';
+  await ctx2.importSettings();
+  assert.deepStrictEqual(optStorage.data.projects, [{ name: 'D', group: 'G2' }]);
+  assert.deepStrictEqual(optStorage.data.logs, ['x']);
+  assert.strictEqual(fileInput.value, '');
+  assert.ok(renderCalled);
+  assert.ok(optLogs.includes('Imported settings'));
+
+  doc2.getElementById('project-list').children = [];
+  await optStorage.set({ projects: [ { name: 'A1', group: 'G1' }, { name: 'A2', group: 'G1' }, { name: 'B1', group: 'G2' } ] });
+  renderCalled = false;
+  await ctx2.renderProjectList();
+  const kids = doc2.getElementById('project-list').children;
+  assert.strictEqual(kids.length, 5);
+  assert.strictEqual(kids[0].textContent, 'G1');
+  assert.strictEqual(kids[3].textContent, 'G2');
+
+  function moveProject(arr, idx, dir) {
+    const ni = idx + dir;
+    if (ni < 0 || ni >= arr.length) return;
+    const [p] = arr.splice(idx, 1);
+    arr.splice(ni, 0, p);
+  }
+  const arr = [ { name: 'X', group: 'G' }, { name: 'Y', group: 'G' }, { name: 'Z', group: 'G' } ];
+  moveProject(arr, 1, -1);
+  assert.deepStrictEqual(arr.map(p => p.name), ['Y','X','Z']);
+  moveProject(arr, 0, 1);
+  assert.deepStrictEqual(arr.map(p => p.name), ['X','Y','Z']);
 
   console.log('All tests passed.');
 })();
