@@ -5,11 +5,6 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
-async function addLog(message) {
-  const { logs = [] } = await storage.get('logs');
-  logs.push({ msg: message, date: new Date().toLocaleString() });
-  await storage.set({ logs });
-}
 
 async function loadLogs() {
   const { logs = [] } = await storage.get('logs');
