@@ -99,11 +99,6 @@ async function setMeetingToProjectMap(map) {
 }
 
 // --- EVERHOUR INTEGRATION ---
-async function addLog(message) {
-  const { logs = [] } = await storage.get('logs');
-  logs.push({ msg: message, date: new Date().toLocaleString() });
-  await storage.set({ logs });
-}
 
 async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
   const { everhourToken = '' } = await storage.get('everhourToken');
