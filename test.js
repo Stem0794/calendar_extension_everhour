@@ -3,9 +3,10 @@ const cp = require('child_process');
 const fs = require('fs');
 const vm = require('vm');
 
-// Syntax checks for popup and content scripts
+// Syntax checks for popup, content and util scripts
 cp.execSync('node -c popup.js');
 cp.execSync('node -c content.js');
+cp.execSync('node -c util.js');
 
 // Utility functions from popup.js
 function quoteField(value) {
