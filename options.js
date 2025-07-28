@@ -205,6 +205,34 @@ async function exportSettings() {
 }
 document.getElementById('export-settings').onclick = exportSettings;
 
+// Import settings from file and merge into storage, excluding API token
+async function importSettings() {
+  const fileInput = document.getElementById('import-file');
+  const file = fileInput.files[0];
+  if (!file) return;
+  let text = '';
+  try {
+    text = await file.text();
+  } catch (e) {
+    alert('Could not read file');
+    return;
+  }
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    alert('Invalid JSON');
+    return;
+  }
+  delete data.everhourToken;
+  const current = await storage.get(null);
+  await storage.set({ ...current, ...data });
+  await addLog('Imported settings');
+  renderProjectList();
+  fileInput.value = '';
+}
+document.getElementById('import-settings').onclick = importSettings;
+
 
 // Init
 loadEverhourToken();
