@@ -136,8 +136,6 @@ function setupPopup(events){
 }
 
 // Tests for unknown month handling in content.js
-const fs = require('fs');
-const vm = require('vm');
 
 function runParse(text){
   const code = fs.readFileSync('content.js', 'utf8');
