@@ -9,7 +9,7 @@
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
       background: #f0f2f5;
       margin: 0;
-      min-width: 460px;
+      min-width: 560px;
       min-height: 430px;
       display: flex;
       justify-content: center;
@@ -17,7 +17,7 @@
     }
     #settings-wrapper {
       width: 100%;
-      max-width: 620px;
+      max-width: 760px;
       background: #fff;
       border-radius: 8px;
       border: 1px solid #e1e4ea;
@@ -58,6 +58,8 @@
       <span id="token-status" style="font-size:12px;margin-left:6px;"></span>
       <div style="margin-top:20px;">
         <button id="export-settings" style="margin-top:0;">Export Data</button>
+        <button id="import-settings" style="margin-left:6px;margin-top:0;">Import</button>
+        <input type="file" id="import-file" accept="application/json" style="margin-left:6px;" />
         <input type="file" id="import-file" accept="application/json" style="margin-left:6px;" />
         <button id="import-settings">Import</button>
         <a id="download-link" style="display:none;"></a>
