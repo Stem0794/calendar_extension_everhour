@@ -47,7 +47,15 @@ async function renderProjectList() {
   const { projects = [] } = await storage.get('projects');
   const list = document.getElementById('project-list');
   list.innerHTML = '';
+  let lastGroup = null;
   projects.forEach((proj, idx) => {
+    if (proj.group !== lastGroup) {
+      const gh = document.createElement('li');
+      gh.textContent = proj.group || 'Ungrouped';
+      gh.className = 'group-header';
+      list.appendChild(gh);
+      lastGroup = proj.group;
+    }
     const li = document.createElement('li');
     li.style.alignItems = 'center';
     const dot = `<span class="color-dot" style="background:${proj.color||'#c1d6f9'};"></span>`;
@@ -56,13 +64,16 @@ async function renderProjectList() {
         + `<input type="color" id="edit-color-${idx}" value="${proj.color||'#42a5f5'}" style="margin-left:6px;width:32px;"/>`
         + `<input type="text" class="keyword-input" value="${(proj.keywords||[]).join(', ')}" id="edit-keywords-${idx}" placeholder="Keywords"/>`
         + `<input type="text" class="task-input" value="${proj.taskId||''}" id="edit-task-${idx}" placeholder="Task ID"/>`
+        + `<input type="text" class="group-input" value="${proj.group||''}" id="edit-group-${idx}" placeholder="Group"/>`
         + `<button class="save-btn" data-idx="${idx}">Save</button><button class="cancel-btn" data-idx="${idx}">Cancel</button>`;
     } else {
       li.innerHTML = `${dot}<span>${proj.name}</span>`
         + `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">[${(proj.keywords||[]).join(', ')}]</span>`
         + (proj.taskId ? `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">(${proj.taskId})</span>` : '')
         + `<button class="edit-btn" data-idx="${idx}">Edit</button>`
-        + `<button class="delete-btn" data-idx="${idx}" title="Delete">Delete</button>`;
+        + `<button class="delete-btn" data-idx="${idx}" title="Delete">Delete</button>`
+        + `<button class="move-btn up" data-idx="${idx}" title="Move up">↑</button>`
+        + `<button class="move-btn down" data-idx="${idx}" title="Move down">↓</button>`;
     }
     list.appendChild(li);
   });
@@ -92,6 +103,7 @@ async function renderProjectList() {
       const color = document.getElementById(`edit-color-${idx}`).value;
       const keywords = document.getElementById(`edit-keywords-${idx}`).value.split(',').map(k=>k.trim()).filter(Boolean);
       const taskId = document.getElementById(`edit-task-${idx}`).value.trim();
+      const group = document.getElementById(`edit-group-${idx}`).value.trim();
       let { projects = [] } = await storage.get('projects');
       if (!name) {
         alert('Project name cannot be empty');
@@ -103,7 +115,7 @@ async function renderProjectList() {
         return;
       }
       const oldName = projects[idx].name;
-      projects[idx] = { name, color, keywords, taskId, _edit: false };
+      projects[idx] = { name, color, keywords, taskId, group, _edit: false };
       await storage.set({ projects });
       let { meetingProjectMap={} } = await storage.get('meetingProjectMap');
       if (name !== oldName) {
@@ -130,6 +142,22 @@ async function renderProjectList() {
       renderProjectList();
     };
   });
+  // Move project
+  function move(idx, dir){
+    storage.get('projects').then(({projects=[]})=>{
+      const ni = idx + dir;
+      if(ni<0 || ni>=projects.length) return;
+      const [p] = projects.splice(idx,1);
+      projects.splice(ni,0,p);
+      storage.set({projects}).then(renderProjectList);
+    });
+  }
+  list.querySelectorAll('.move-btn.up').forEach(btn=>{
+    btn.onclick = ()=> move(+btn.dataset.idx,-1);
+  });
+  list.querySelectorAll('.move-btn.down').forEach(btn=>{
+    btn.onclick = ()=> move(+btn.dataset.idx,1);
+  });
 }
 
 // Add new project
@@ -138,17 +166,19 @@ document.getElementById('add-project').onclick = async () => {
   const color = document.getElementById('new-project-color').value || '#42a5f5';
   const kwds = document.getElementById('new-project-keywords').value.split(',').map(k=>k.trim()).filter(Boolean);
   const taskId = document.getElementById('new-project-task').value.trim();
+  const group = document.getElementById('new-project-group').value.trim();
   const name = inp.value.trim();
   if (!name) return;
   let { projects = [] } = await storage.get('projects');
   if (!projects.find(p => p.name === name)) {
-    projects.push({ name, color, keywords: kwds, taskId });
+    projects.push({ name, color, keywords: kwds, taskId, group });
     await storage.set({ projects });
     renderProjectList();
   }
   inp.value = '';
   document.getElementById('new-project-keywords').value = '';
   document.getElementById('new-project-task').value = '';
+  document.getElementById('new-project-group').value = '';
 };
 
 

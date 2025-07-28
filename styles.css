@@ -51,5 +51,9 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: #fff; margin-rig
 .keyword-input { width:110px; margin-left: 4px;}
 .rename-input { width:95px; margin-right: 4px;}
 .task-input { width:90px; margin-left: 4px; }
+.group-input { width:90px; margin-left: 4px; }
+.group-header { font-weight:bold; margin-top:10px; }
+.move-btn { background:#fff;border:1px solid #bfc6d2;color:#333;padding:3px 6px;font-size:12px;margin-left:4px; }
+.move-btn:hover { background:#f0f2f5; }
 .onboarding-tip { background: #e3edfa; color: #294365; font-size: 14px; padding: 10px 14px; border-radius: 7px; margin-bottom: 13px; border: 1px solid #aacee6; }
 .edit-btn, .save-btn, .cancel-btn { margin-left: 6px; font-size:12px; padding:3px 7px; }

@@ -13,6 +13,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 - Quickly send a meeting's time to **Everhour**
 - Simple **onboarding tooltip** to get started
 - Modern, clean UI
+- Reorder and group projects in settings
 
 ## 🚀 How to Use
 
@@ -27,7 +28,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 
 - **Summary** – See and tag this week’s meetings
 - **Project Hours** – View total hours per project (weekly or daily)
-- **Settings** – Create, rename, color, or delete projects and keywords
+- **Settings** – Create, rename, color, reorder, group, or delete projects and keywords
 
 ## 💾 Installation
 
