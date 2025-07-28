@@ -14,6 +14,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 - Simple **onboarding tooltip** to get started
 - Modern, clean UI
 - Reorder and group projects in settings
+- Export your settings and projects (excluding the API token)
 
 ## 🚀 How to Use
 
