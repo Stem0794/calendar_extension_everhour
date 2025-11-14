@@ -84,6 +84,24 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
+function createProjectSelect(projects, assignedProject) {
+  const sel = document.createElement('select');
+  const emptyOpt = document.createElement('option');
+  emptyOpt.value = '';
+  emptyOpt.textContent = '-';
+  sel.appendChild(emptyOpt);
+  projects.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = p.name;
+    if (p.color) opt.style.background = p.color;
+    if (p.name === assignedProject) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.title = sel.options[sel.selectedIndex]?.text || '';
+  return sel;
+}
+
 // Settings page button
 document.getElementById('open-options').onclick = () => {
   chrome.runtime.openOptionsPage();
@@ -280,10 +298,7 @@ async function loadSummary() {
               setMeetingToProjectMap(map);
             }
           }
-          const sel = document.createElement('select');
-          sel.innerHTML = '<option value="">-</option>' +
-            projects.map(p => `<option value="${p.name}" style="background:${p.color};" ${assignedProject === p.name ? "selected" : ""}>${p.name}</option>`).join('');
-          sel.title = sel.options[sel.selectedIndex]?.text || '';
+          const sel = createProjectSelect(projects, assignedProject);
           sel.onchange = async () => {
             map[title] = sel.value;
             assignedProject = sel.value;
@@ -297,7 +312,12 @@ async function loadSummary() {
             const proj = projects.find(p => p.name === assignedProject);
             if (proj) tr.style.background = addAlpha(proj.color, 0.2);
           }
-          tr.innerHTML = `<td>${title}</td><td>${hours}</td>`;
+          const meetingCell = document.createElement('td');
+          meetingCell.textContent = title;
+          tr.appendChild(meetingCell);
+          const hoursCell = document.createElement('td');
+          hoursCell.textContent = hours;
+          tr.appendChild(hoursCell);
           const td = document.createElement('td');
           td.appendChild(sel);
           tr.appendChild(td);
@@ -368,10 +388,7 @@ async function loadSummary() {
               setMeetingToProjectMap(map);
             }
           }
-          const sel = document.createElement('select');
-          sel.innerHTML = '<option value="">-</option>' +
-            projects.map(p => `<option value="${p.name}" style="background:${p.color};" ${assignedProject === p.name ? "selected" : ""}>${p.name}</option>`).join('');
-          sel.title = sel.options[sel.selectedIndex]?.text || '';
+          const sel = createProjectSelect(projects, assignedProject);
           sel.onchange = async () => {
             map[title] = sel.value;
             assignedProject = sel.value;
@@ -385,7 +402,12 @@ async function loadSummary() {
             const proj = projects.find(p => p.name === assignedProject);
             if (proj) tr.style.background = addAlpha(proj.color, 0.2);
           }
-          tr.innerHTML = `<td>${title}</td><td>${hours}</td>`;
+          const meetingCell = document.createElement('td');
+          meetingCell.textContent = title;
+          tr.appendChild(meetingCell);
+          const hoursCell = document.createElement('td');
+          hoursCell.textContent = hours;
+          tr.appendChild(hoursCell);
           const td = document.createElement('td');
           td.appendChild(sel);
           tr.appendChild(td);
@@ -455,7 +477,12 @@ async function loadProjectHours() {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
           if (proj) tr.style.background = addAlpha(proj.color, 0.2);
-          tr.innerHTML = `<td>${project}</td><td>${hours}</td>`;
+          const nameCell = document.createElement('td');
+          nameCell.textContent = project;
+          tr.appendChild(nameCell);
+          const hoursCell = document.createElement('td');
+          hoursCell.textContent = hours;
+          tr.appendChild(hoursCell);
           table.appendChild(tr);
         }
         container.appendChild(table);
@@ -491,7 +518,12 @@ async function loadProjectHours() {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
           if (proj) tr.style.background = addAlpha(proj.color, 0.2);
-          tr.innerHTML = `<td>${project}</td><td>${hours}</td>`;
+          const nameCell = document.createElement('td');
+          nameCell.textContent = project;
+          tr.appendChild(nameCell);
+          const hoursCell = document.createElement('td');
+          hoursCell.textContent = hours;
+          tr.appendChild(hoursCell);
           table.appendChild(tr);
         }
         container.appendChild(table);

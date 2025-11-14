@@ -3,6 +3,53 @@ const cp = require('child_process');
 const fs = require('fs');
 const vm = require('vm');
 
+const TEST_START = Date.now();
+const ASSERTION_RESULTS = [];
+const ASSERT_METHODS = ['ok', 'strictEqual', 'deepStrictEqual'];
+
+function fmtArg(arg) {
+  if (typeof arg === 'string') return `"${arg.length > 80 ? arg.slice(0, 77) + '...' : arg}"`;
+  if (Array.isArray(arg)) return `[${arg.slice(0, 3).map(fmtArg).join(', ')}${arg.length > 3 ? ', ...' : ''}]`;
+  if (typeof arg === 'object' && arg !== null) {
+    try {
+      const json = JSON.stringify(arg);
+      return json.length > 80 ? json.slice(0, 77) + '...' : json;
+    } catch {
+      return '[Object]';
+    }
+  }
+  return String(arg);
+}
+
+ASSERT_METHODS.forEach(method => {
+  const original = assert[method];
+  assert[method] = function patchedAssert(...args) {
+    const detail = `assert.${method}(${args.map(fmtArg).join(', ')})`;
+    try {
+      const result = original.apply(assert, args);
+      ASSERTION_RESULTS.push({ name: detail, status: 'passed' });
+      return result;
+    } catch (err) {
+      ASSERTION_RESULTS.push({ name: detail, status: 'failed', error: err.message });
+      throw err;
+    }
+  };
+});
+
+process.on('exit', (code) => {
+  if (!process.env.TEST_REPORT_JSON) return;
+  const payload = {
+    status: code === 0 ? 'passed' : 'failed',
+    durationMs: Date.now() - TEST_START,
+    assertions: ASSERTION_RESULTS
+  };
+  try {
+    fs.writeFileSync(process.env.TEST_REPORT_JSON, JSON.stringify(payload, null, 2));
+  } catch (err) {
+    console.error('Could not write test report JSON:', err);
+  }
+});
+
 // Syntax checks for popup, content and util scripts
 cp.execSync('node -c popup.js');
 cp.execSync('node -c content.js');
@@ -111,29 +158,188 @@ assert.strictEqual(ev[0].comment,'Note');
 assert.strictEqual(ev[0].startTime,'14:00');
 
 // --- popup.js getWeekKey and dropdown tests ---
-class Element{constructor(t){this.tagName=t;this.children=[];this.innerHTML='';this.value='';this.textContent='';this.style={};this.dataset={};this.classList={add(){},remove(){}};}appendChild(c){this.children.push(c);}}
-class Select extends Element{constructor(){super('select');this.options=[];this.selectedIndex=0;}set innerHTML(h){this._innerHTML=h;this.options=[];const r=/<option[^>]*>(.*?)<\/option>/gi;let m;while((m=r.exec(h))){const val=(m[0].match(/value="(.*?)"/)||[])[1]||'';this.options.push({value:val,text:m[1]});}}get innerHTML(){return this._innerHTML;}}
+class Element{
+  constructor(tag, doc=null){
+    this.tagName = tag;
+    this.children = [];
+    this._innerHTML = '';
+    this.value = '';
+    this.textContent = '';
+    this.style = {};
+    this.dataset = {};
+    this.classList = { add(){}, remove(){} };
+    this.disabled = false;
+    this.onclick = null;
+    this._doc = doc;
+    Object.defineProperty(this, 'id', {
+      configurable: true,
+      get: () => this._id || '',
+      set: val => {
+        this._id = val;
+        if (this._doc) this._doc.elements[val] = this;
+      }
+    });
+    Object.defineProperty(this, 'innerHTML', {
+      configurable: true,
+      get: () => this._innerHTML,
+      set: val => {
+        this._innerHTML = val;
+        if (val === '') this.children = [];
+      }
+    });
+  }
+  appendChild(child){
+    this.children.push(child);
+    return child;
+  }
+  querySelectorAll(selector){
+    const results = [];
+    const targetClasses = (selector || '').split('.').filter(Boolean);
+    const walk = node => {
+      if(!node || !node.children) return;
+      node.children.forEach(child => {
+        const cls = (child.className || '').split(/\s+/);
+        if(targetClasses.length && targetClasses.every(c => cls.includes(c))) results.push(child);
+        walk(child);
+      });
+    };
+    walk(this);
+    return results;
+  }
+  querySelector(selector){
+    return this.querySelectorAll(selector)[0] || null;
+  }
+  click(){
+    if (typeof this.onclick === 'function') this.onclick();
+    this.clicked = true;
+  }
+}
+
+class Select extends Element{
+  constructor(doc=null){
+    super('select', doc);
+    this.options = [];
+    this.selectedIndex = 0;
+  }
+  appendChild(child){
+    super.appendChild(child);
+    if(child.tagName === 'option'){
+      const option = { value: child.value || '', text: child.textContent || '' };
+      this.options.push(option);
+      if(child.selected) this.selectedIndex = this.options.length - 1;
+    }
+    return child;
+  }
+}
+
+function createStubDocument(){
+  const doc = {
+    elements: {},
+    createElement(tag){
+      return tag === 'select' ? new Select(doc) : new Element(tag, doc);
+    },
+    getElementById(id){
+      if(!this.elements[id]){
+        const el = new Element('div', doc);
+        el._id = id;
+        this.elements[id] = el;
+      }
+      return this.elements[id];
+    },
+    querySelectorAll(){ return { forEach(){} }; },
+    querySelector(){ return null; }
+  };
+  return doc;
+}
 const popupCode = fs.readFileSync('popup.js','utf8');
-function setupPopup(events){
-  const document={
-    elements:{},
-    createElement:t=>t==='select'?new Select():new Element(t),
-    getElementById(id){return this.elements[id]||(this.elements[id]=new Element('div'));},
-    querySelectorAll(){return {forEach(){}}},
-    querySelector(){return null}
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+function createStorageAPI(data){
+  const resolveKeys = keys => {
+    if (keys === null || keys === undefined) return { ...data };
+    if (Array.isArray(keys)) {
+      return keys.reduce((acc, key) => { acc[key] = data[key]; return acc; }, {});
+    }
+    if (typeof keys === 'object') {
+      return Object.keys(keys).reduce((acc, key) => {
+        acc[key] = data[key] ?? keys[key];
+        return acc;
+      }, {});
+    }
+    return { [keys]: data[keys] };
   };
-  const chrome={
-    tabs:{query:(o,cb)=>cb([{id:1}]), sendMessage:(id,msg,cb)=>{cb(events);}},
-    storage:{local:{
-      get:(key,cb)=>{const data={projects:[{name:'P1',color:'#ccc'}],everhourEntries:{},meetingProjectMap:{},onboarded:true};const res=typeof key==='string'?{[key]:data[key]}:key.reduce((o,k)=>{o[k]=data[k];return o;},{}); if(cb) cb(res); else return Promise.resolve(res);},
-      set:(o,cb)=>{cb&&cb(); return Promise.resolve();},
-      remove:(k,cb)=>{cb&&cb(); return Promise.resolve();}
-    }},
-    runtime:{openOptionsPage(){}, lastError:null}
+  return {
+    get(keys, cb){
+      const res = resolveKeys(keys);
+      if (cb) cb(res);
+      else return Promise.resolve(res);
+    },
+    set(obj, cb){
+      Object.assign(data, obj);
+      cb && cb();
+      return Promise.resolve();
+    },
+    remove(key, cb){
+      (Array.isArray(key) ? key : [key]).forEach(k => delete data[k]);
+      cb && cb();
+      return Promise.resolve();
+    }
   };
-  const sb={console,chrome,document};
-  vm.createContext(sb);vm.runInContext(popupCode,sb);
-  return {sb,document};
+}
+
+function setupPopup(events, overrides = {}){
+  const document = createStubDocument();
+  ['summary-filter','hours-filter','meeting-list','project-hours-table','onboarding-tip','open-options'].forEach(id => document.getElementById(id));
+  const data = Object.assign({
+    projects: [{ name: 'P1', color: '#ccc', keywords: [] }],
+    everhourEntries: {},
+    meetingProjectMap: {},
+    onboarded: true,
+    activeTab: 'summary',
+    summaryFilter: 'week',
+    hoursFilter: 'week',
+    logs: []
+  }, overrides);
+  let currentEvents = events;
+  const storageAPI = createStorageAPI(data);
+  const chrome = {
+    tabs: {
+      query: (opts, cb) => cb([{ id: 1 }]),
+      sendMessage: (tabId, msg, cb) => cb(currentEvents)
+    },
+    storage: {
+      local: storageAPI,
+      onChanged: { addListener(){} }
+    },
+    runtime: { openOptionsPage(){}, lastError: null }
+  };
+  const sb = { console, chrome, document, setTimeout, clearTimeout };
+  vm.createContext(sb); vm.runInContext(popupCode, sb);
+  return {
+    sb,
+    document,
+    chrome,
+    data,
+    setEvents(next){ currentEvents = next; }
+  };
+}
+
+async function renderSummary(env, events, filter = 'week'){
+  env.document.getElementById('summary-filter').value = filter;
+  await new Promise(resolve => {
+    env.sb.chrome.tabs.sendMessage = (id, msg, cb) => { cb(events); resolve(); };
+    env.sb.loadSummary();
+  });
+  await flush();
+}
+
+async function renderProjectHoursView(env, events, filter = 'week'){
+  env.document.getElementById('hours-filter').value = filter;
+  await new Promise(resolve => {
+    env.sb.chrome.tabs.sendMessage = (id, msg, cb) => { cb(events); resolve(); };
+    env.sb.loadProjectHours();
+  });
+  await flush();
 }
 
 // Tests for unknown month handling in content.js
@@ -156,6 +362,25 @@ assert.strictEqual(eventsParsed[0].date, '2023-08-05');
 
 eventsParsed = runParse('5 agosto 2023 from 9:00 to 10:00 Meeting');
 assert.strictEqual(eventsParsed.length, 0);
+
+const complexHtml = `
+<div data-eventchip><div class="XuJrye">Mon 25 September 2023 from 9:00 to 10:30 Weekly Sync + Notes</div></div>
+<div data-eventchip><div class="XuJrye">from 12:00 to 13:00 Lunch Break</div></div>
+<div data-eventchip><div class="XuJrye">lundi 2 octobre 2023 de 22h00 à 1h00 Projet Nuit</div></div>
+`;
+let ctx = { document: createContentDoc(complexHtml), chrome:{ runtime:{ onMessage:{ addListener(){} } } }, console };
+vm.createContext(ctx); vm.runInContext(contentCode, ctx);
+let fixtures = ctx.parseEventsFromWeekView();
+assert.strictEqual(fixtures.length, 2);
+const nightly = fixtures.find(ev => ev.title === 'Projet Nuit');
+assert.ok(nightly);
+assert.strictEqual(nightly.duration, 180);
+assert.strictEqual(fixtures[0].comment, 'Notes');
+
+const unknownMonthHtml = `<div data-eventchip><div class="XuJrye">5 agosto 2023 from 9:00 to 10:00 Meeting</div></div>`;
+ctx = { document: createContentDoc(unknownMonthHtml), chrome:{ runtime:{ onMessage:{ addListener(){} } } }, console };
+vm.createContext(ctx); vm.runInContext(contentCode, ctx);
+assert.strictEqual(ctx.parseEventsFromWeekView().length, 0);
 
 // --- Everhour integration logic ---
 const alerts = [];
@@ -257,15 +482,84 @@ const events = [{ title:'Meeting', date:'2025-01-01', duration:1, comment:'Test'
 const weekKey = 'Meeting|2024-12-30';
 btn.dataset.weekKey = weekKey;
 
+function findFirstSelect(node){
+  if(!node || !node.children) return null;
+  for(const child of node.children){
+    if(child.tagName === 'select') return child;
+    const found = findFirstSelect(child);
+    if(found) return found;
+  }
+  return null;
+}
+
+function findChildByClass(node, className){
+  if(!node || !node.children) return null;
+  for(const child of node.children){
+    const cls = (child.className || '').split(/\s+/);
+    if(cls.includes(className)) return child;
+  }
+  return null;
+}
+
+function getProjectRows(list){
+  return list.children.filter(child => child.className !== 'group-header');
+}
+
+function extractSelect(html, id){
+  const re = new RegExp(`<select[^>]*id="${id}"[\\s\\S]*?<\\/select>`, 'i');
+  const match = html.match(re);
+  return match ? match[0] : '';
+}
+
+function expectOptions(selectHtml, values){
+  values.forEach(val => {
+    const re = new RegExp(`<option[^>]*value="${val}"[^>]*>`, 'i');
+    assert.ok(re.test(selectHtml), `Missing option ${val}`);
+  });
+}
+
+function expectTab(html, tabName){
+  const re = new RegExp(`<div[^>]*class="[^"]*tab[^"]*"[^>]*data-tab="${tabName}"`, 'i');
+  assert.ok(re.test(html), `Missing tab ${tabName}`);
+}
+
 (async () => {
-  // popup.js dropdown and getWeekKey tests
-  let env = setupPopup([{title:'M',duration:60,date:'2023-09-25',dayOfWeek:1,dayName:'Mon'}]);
-  env.document.getElementById('summary-filter').value = 'week';
-  await new Promise(r=>{env.sb.chrome.tabs.sendMessage=(id,msg,cb)=>{cb([{title:'M',duration:60,date:'2023-09-25',dayOfWeek:1,dayName:'Mon'}]);setTimeout(r,0);}; env.sb.loadSummary();});
+  // popup.js dropdown, auto-linking, and filters
+  const baseEvents = [{title:'M',duration:60,date:'2023-09-25',dayOfWeek:1,dayName:'Mon'}];
+  let env = setupPopup(baseEvents);
+  await renderSummary(env, baseEvents, 'week');
   const tbl = env.document.getElementById('meeting-list').children[0];
-  const sel = tbl.children[1].children[0].children[0];
+  const sel = findFirstSelect(tbl);
   assert.deepStrictEqual(sel.options.map(o=>o.text), ['-','P1']);
   assert.strictEqual(env.sb.getWeekKey('Test',[{date:'2023-09-27'}]), 'Test|2023-09-25');
+
+  const summaryEvents = [
+    { title:'Weekly Sync', duration:120, date:'2023-09-25', dayOfWeek:1, dayName:'Monday' },
+    { title:'Tuesday Standup', duration:60, date:'2023-09-26', dayOfWeek:2, dayName:'Tuesday' }
+  ];
+  const autoEnv = setupPopup(summaryEvents, {
+    projects: [
+      { name:'Alpha', color:'#eee', keywords:['sync'] },
+      { name:'Beta', color:'#ddd', keywords:['standup'] }
+    ],
+    meetingProjectMap: { 'Tuesday Standup':'Beta' }
+  });
+  await renderSummary(autoEnv, summaryEvents, 'week');
+  assert.strictEqual(autoEnv.data.meetingProjectMap['Weekly Sync'], 'Alpha');
+
+  await renderSummary(autoEnv, summaryEvents, 'monday');
+  const mondayList = autoEnv.document.getElementById('meeting-list');
+  const mondayLabel = mondayList.children[0];
+  const mondayTable = mondayList.children[1];
+  assert.strictEqual(mondayLabel.textContent, 'Monday');
+  assert.strictEqual(mondayTable.children[1].children[0].textContent, 'Weekly Sync');
+
+  await renderProjectHoursView(autoEnv, summaryEvents, 'tuesday');
+  const hoursContainer = autoEnv.document.getElementById('project-hours-table');
+  const dayLabel = hoursContainer.children[0];
+  const hoursRow = hoursContainer.children[1].children[1];
+  assert.strictEqual(dayLabel.textContent, 'Tuesday');
+  assert.strictEqual(hoursRow.children[0].textContent, 'Beta');
 
   await sendToEverhour('Meeting', events, 'Proj', btn, weekKey);
   assert.strictEqual(btn.dataset.sent, 'true');
@@ -274,6 +568,21 @@ btn.dataset.weekKey = weekKey;
   assert.strictEqual(calls[0].url, 'https://api.everhour.com/tasks/123/time');
   assert.strictEqual(JSON.parse(calls[0].opts.body).comment, 'Test');
   assert.deepStrictEqual(storage.data.everhourEntries[weekKey], ['id1']);
+
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({ ok:false, json: async () => ({}) });
+  const originalSetTimeout = global.setTimeout;
+  let failureReset = false;
+  global.setTimeout = fn => { failureReset = true; fn(); return 0; };
+  btn.dataset.sent = 'false';
+  btn.textContent = '+';
+  calls = [];
+  await sendToEverhour('Meeting', events, 'Proj', btn, weekKey);
+  assert.ok(failureReset);
+  assert.strictEqual(btn.textContent, '+');
+  assert.deepStrictEqual(storage.data.everhourEntries[weekKey], ['id1']);
+  global.fetch = originalFetch;
+  global.setTimeout = originalSetTimeout;
 
   calls = [];
   await removeFromEverhour(btn, rem);
@@ -287,36 +596,26 @@ btn.dataset.weekKey = weekKey;
 
   // --- options.js export/import and grouping tests ---
   const optionsCode = fs.readFileSync('options.js', 'utf8');
-  const optStorage = {
-    data: {
-      everhourToken: 'tok',
-      projects: [
-        { name: 'A', group: 'G1' },
-        { name: 'B', group: 'G1' },
-        { name: 'C', group: 'G2' }
-      ],
-      logs: []
-    },
-    async get(key) { if (key === null) return { ...this.data }; return { [key]: this.data[key] }; },
-    async set(obj) { Object.assign(this.data, obj); }
+  const optData = {
+    everhourToken: 'tok',
+    projects: [
+      { name: 'A', group: 'G1' },
+      { name: 'B', group: 'G1' },
+      { name: 'C', group: 'G2' }
+    ],
+    logs: [],
+    meetingProjectMap: { Meeting: 'A' }
   };
-  const doc2 = {
-    elements: {},
-    createElement: t => new Element(t),
-    getElementById(id) { return this.elements[id] || (this.elements[id] = new Element('div')); },
-    querySelectorAll() { return { forEach() { } }; },
-    querySelector() { return null; }
-  };
-  let optLogs = [];
-  function addLog2(msg) { optLogs.push(msg); }
-  let renderCalled = false;
+  const doc2 = createStubDocument();
+  ['project-list','log-list','everhour-token','token-status','save-token','new-project','new-project-color','new-project-keywords','new-project-task','new-project-group','add-project','import-file','download-link','export-settings','import-settings'].forEach(id => doc2.getElementById(id));
+  doc2.getElementById('import-file').files = [];
   let blobStr = '';
   const BlobCls = class { constructor(parts) { blobStr = parts[0]; } };
   let createdUrl = '';
-  const URLapi = { createObjectURL: b => { createdUrl = 'blob:url'; return createdUrl; }, revokeObjectURL() { } };
+  const URLapi = { createObjectURL: () => { createdUrl = 'blob:url'; return createdUrl; }, revokeObjectURL() { } };
   const chrome2 = {
     storage: {
-      local: { get: k => optStorage.get(k), set: o => optStorage.set(o), remove() { } },
+      local: createStorageAPI(optData),
       onChanged: { addListener() { } }
     }
   };
@@ -324,9 +623,7 @@ btn.dataset.weekKey = weekKey;
     console,
     document: doc2,
     chrome: chrome2,
-    storage: optStorage,
-    addLog: addLog2,
-    renderProjectList: () => { renderCalled = true; },
+    storage: optData,
     Blob: BlobCls,
     URL: URLapi,
     setTimeout: fn => fn(),
@@ -343,40 +640,80 @@ btn.dataset.weekKey = weekKey;
       { name: 'B', group: 'G1' },
       { name: 'C', group: 'G2' }
     ],
-    logs: []
+    logs: [],
+    meetingProjectMap: { Meeting: 'A' }
   });
-  assert.ok(optLogs.includes('Exported settings'));
+  assert.ok(optData.logs.some(l => l.msg === 'Exported settings'));
 
   const fileInput = doc2.getElementById('import-file');
-  fileInput.files = [{ text: async () => JSON.stringify({ projects: [{ name: 'D', group: 'G2' }], logs: ['x'], everhourToken: 'x' }) }];
+  fileInput.files = [{ text: async () => JSON.stringify({ projects: [{ name: 'D', group: 'G2' }], logs: ['x'], meetingProjectMap: { Meeting: 'D' }, everhourToken: 'x' }) }];
   fileInput.value = 'f';
   await ctx2.importSettings();
-  assert.deepStrictEqual(optStorage.data.projects, [{ name: 'D', group: 'G2' }]);
-  assert.deepStrictEqual(optStorage.data.logs, ['x']);
+  const importedProjects = optData.projects.map(p => ({ name: p.name, group: p.group }));
+  assert.strictEqual(JSON.stringify(importedProjects), JSON.stringify([{ name: 'D', group: 'G2' }]));
+  assert.strictEqual(optData.logs[0], 'x');
+  assert.strictEqual(JSON.stringify(optData.meetingProjectMap), JSON.stringify({ Meeting: 'D' }));
   assert.strictEqual(fileInput.value, '');
-  assert.ok(renderCalled);
-  assert.ok(optLogs.includes('Imported settings'));
+  assert.ok(optData.logs.some(l => l.msg === 'Imported settings'));
 
   doc2.getElementById('project-list').children = [];
-  await optStorage.set({ projects: [ { name: 'A1', group: 'G1' }, { name: 'A2', group: 'G1' }, { name: 'B1', group: 'G2' } ] });
-  renderCalled = false;
+  await chrome2.storage.local.set({ projects: [ { name: 'A1', group: 'G1' }, { name: 'A2', group: 'G1' }, { name: 'B1', group: 'G2' } ] });
   await ctx2.renderProjectList();
   const kids = doc2.getElementById('project-list').children;
   assert.strictEqual(kids.length, 5);
   assert.strictEqual(kids[0].textContent, 'G1');
   assert.strictEqual(kids[3].textContent, 'G2');
 
-  function moveProject(arr, idx, dir) {
-    const ni = idx + dir;
-    if (ni < 0 || ni >= arr.length) return;
-    const [p] = arr.splice(idx, 1);
-    arr.splice(ni, 0, p);
-  }
-  const arr = [ { name: 'X', group: 'G' }, { name: 'Y', group: 'G' }, { name: 'Z', group: 'G' } ];
-  moveProject(arr, 1, -1);
-  assert.deepStrictEqual(arr.map(p => p.name), ['Y','X','Z']);
-  moveProject(arr, 0, 1);
-  assert.deepStrictEqual(arr.map(p => p.name), ['X','Y','Z']);
+  await chrome2.storage.local.set({ projects: [{ name: '<img src=x>', group: '' }], meetingProjectMap: {} });
+  await ctx2.renderProjectList();
+  let projectRows = getProjectRows(doc2.getElementById('project-list'));
+  assert.strictEqual(projectRows[0].children[1].textContent, '<img src=x>');
+
+  await chrome2.storage.local.set({ projects: [{ name: 'Legacy', group: '' }], meetingProjectMap: { Weekly: 'Legacy' } });
+  await ctx2.renderProjectList();
+  projectRows = getProjectRows(doc2.getElementById('project-list'));
+  await findChildByClass(projectRows[0], 'edit-btn').onclick();
+  doc2.getElementById('rename-proj-0').value = 'Modern';
+  await findChildByClass(getProjectRows(doc2.getElementById('project-list'))[0], 'save-btn').onclick();
+  assert.strictEqual(optData.projects[0].name, 'Modern');
+  assert.strictEqual(optData.meetingProjectMap.Weekly, 'Modern');
+
+  await chrome2.storage.local.set({ projects: [{ name: 'Temp', group: '' }], meetingProjectMap: { Weekly: 'Temp' } });
+  await ctx2.renderProjectList();
+  await findChildByClass(getProjectRows(doc2.getElementById('project-list'))[0], 'delete-btn').onclick();
+  await flush();
+  assert.strictEqual(optData.projects.length, 0);
+  assert.deepStrictEqual(optData.meetingProjectMap, {});
+
+  await chrome2.storage.local.set({ projects: [{ name: 'One', group: '' }, { name: 'Two', group: '' }, { name: 'Three', group: '' }] });
+  await ctx2.renderProjectList();
+  const firstRow = getProjectRows(doc2.getElementById('project-list'))[0];
+  const moveDownBtn = firstRow.children.find(child => (child.className || '').includes('move-btn down'));
+  await moveDownBtn.onclick();
+  await flush();
+  assert.strictEqual(optData.projects.map(p => p.name).join(','), 'Two,One,Three');
+
+  const popupHtml = fs.readFileSync('popup.html', 'utf8');
+  expectTab(popupHtml, 'summary');
+  expectTab(popupHtml, 'hours');
+  assert.ok(/id="meeting-list"/.test(popupHtml));
+  assert.ok(/id="project-hours-table"/.test(popupHtml));
+  assert.ok(/id="open-options"/.test(popupHtml));
+  const summarySelect = extractSelect(popupHtml, 'summary-filter');
+  expectOptions(summarySelect, ['week','monday','tuesday','wednesday','thursday','friday']);
+  const hoursSelect = extractSelect(popupHtml, 'hours-filter');
+  expectOptions(hoursSelect, ['week','monday','tuesday','wednesday','thursday','friday']);
+
+  const optionsHtml = fs.readFileSync('options.html', 'utf8');
+  expectTab(optionsHtml, 'projects');
+  expectTab(optionsHtml, 'everhour');
+  expectTab(optionsHtml, 'activity');
+  assert.ok(/id="project-list"/.test(optionsHtml));
+  assert.ok(/id="everhour-token"/.test(optionsHtml));
+  assert.ok(/id="log-list"/.test(optionsHtml));
+  ['new-project','new-project-color','new-project-keywords','new-project-task','new-project-group'].forEach(id => {
+    assert.ok(new RegExp(`id="${id}"`).test(optionsHtml), `Missing ${id}`);
+  });
 
   console.log('All tests passed.');
 })();

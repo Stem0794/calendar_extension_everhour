@@ -74,26 +74,108 @@ async function renderProjectList() {
     }
     const li = document.createElement('li');
     li.style.alignItems = 'center';
-    const dot = `<span class="color-dot" style="background:${proj.color||'#c1d6f9'};"></span>`;
+    const dot = document.createElement('span');
+    dot.className = 'color-dot';
+    dot.style.background = proj.color || '#c1d6f9';
+    li.appendChild(dot);
     const bounds = groupBounds[proj.group || ''];
     const showUp = idx > bounds.first;
     const showDown = idx < bounds.last;
     if (proj._edit) {
-      li.innerHTML = `${dot}<input type="text" class="rename-input" value="${proj.name}" id="rename-proj-${idx}"/>`
-        + `<input type="color" id="edit-color-${idx}" value="${proj.color||'#42a5f5'}" style="margin-left:6px;width:32px;"/>`
-        + `<input type="text" class="keyword-input" value="${(proj.keywords||[]).join(', ')}" id="edit-keywords-${idx}" placeholder="Keywords"/>`
-        + `<input type="text" class="task-input" value="${proj.taskId||''}" id="edit-task-${idx}" placeholder="Task ID"/>`
-        + `<input type="text" class="group-input" value="${proj.group||''}" id="edit-group-${idx}" placeholder="Group"/>`
-        + `<button class="save-btn" data-idx="${idx}">Save</button><button class="cancel-btn" data-idx="${idx}">Cancel</button>`;
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'rename-input';
+      nameInput.value = proj.name;
+      nameInput.id = `rename-proj-${idx}`;
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.id = `edit-color-${idx}`;
+      colorInput.value = proj.color || '#42a5f5';
+      colorInput.style.marginLeft = '6px';
+      colorInput.style.width = '32px';
+
+      const keywordInput = document.createElement('input');
+      keywordInput.type = 'text';
+      keywordInput.className = 'keyword-input';
+      keywordInput.value = (proj.keywords || []).join(', ');
+      keywordInput.id = `edit-keywords-${idx}`;
+      keywordInput.placeholder = 'Keywords';
+
+      const taskInput = document.createElement('input');
+      taskInput.type = 'text';
+      taskInput.className = 'task-input';
+      taskInput.value = proj.taskId || '';
+      taskInput.id = `edit-task-${idx}`;
+      taskInput.placeholder = 'Task ID';
+
+      const groupInput = document.createElement('input');
+      groupInput.type = 'text';
+      groupInput.className = 'group-input';
+      groupInput.value = proj.group || '';
+      groupInput.id = `edit-group-${idx}`;
+      groupInput.placeholder = 'Group';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'save-btn';
+      saveBtn.dataset.idx = idx;
+      saveBtn.textContent = 'Save';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'cancel-btn';
+      cancelBtn.dataset.idx = idx;
+      cancelBtn.textContent = 'Cancel';
+
+      li.appendChild(nameInput);
+      li.appendChild(colorInput);
+      li.appendChild(keywordInput);
+      li.appendChild(taskInput);
+      li.appendChild(groupInput);
+      li.appendChild(saveBtn);
+      li.appendChild(cancelBtn);
     } else {
       const kw = (proj.keywords || []).join(', ');
-      const kwSpan = kw ? `<span style="margin-left:7px;font-size:11px;color:#8c98ac;">[${kw}]</span>` : '';
-      li.innerHTML = `${dot}<span>${proj.name}</span>`
-        + kwSpan
-        + `<button class="edit-btn" data-idx="${idx}">Edit</button>`
-        + `<button class="delete-btn" data-idx="${idx}" title="Delete">Delete</button>`
-        + (showUp ? `<button class="move-btn up" data-idx="${idx}" title="Move up">↑</button>` : '')
-        + (showDown ? `<button class="move-btn down" data-idx="${idx}" title="Move down">↓</button>` : '');
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = proj.name;
+      li.appendChild(nameSpan);
+      if (kw) {
+        const kwSpan = document.createElement('span');
+        kwSpan.style.marginLeft = '7px';
+        kwSpan.style.fontSize = '11px';
+        kwSpan.style.color = '#8c98ac';
+        kwSpan.textContent = `[${kw}]`;
+        li.appendChild(kwSpan);
+      }
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.dataset.idx = idx;
+      editBtn.textContent = 'Edit';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.dataset.idx = idx;
+      deleteBtn.title = 'Delete';
+      deleteBtn.textContent = 'Delete';
+
+      li.appendChild(editBtn);
+      li.appendChild(deleteBtn);
+
+      if (showUp) {
+        const upBtn = document.createElement('button');
+        upBtn.className = 'move-btn up';
+        upBtn.dataset.idx = idx;
+        upBtn.title = 'Move up';
+        upBtn.textContent = '↑';
+        li.appendChild(upBtn);
+      }
+      if (showDown) {
+        const downBtn = document.createElement('button');
+        downBtn.className = 'move-btn down';
+        downBtn.dataset.idx = idx;
+        downBtn.title = 'Move down';
+        downBtn.textContent = '↓';
+        li.appendChild(downBtn);
+      }
     }
     list.appendChild(li);
   });
