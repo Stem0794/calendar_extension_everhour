@@ -1,0 +1,5 @@
+node_modules/
+test-report.json
+test-report.pdf
+playwright-report/
+test-results/

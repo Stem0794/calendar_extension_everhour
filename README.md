@@ -55,7 +55,15 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 
 ## 🧪 Running Tests
 
-Run `node test.js` to check script syntax and sample parsing. Node.js must be installed.
+- `npm test` – runs the Jest wrapper (content parser unit tests + legacy harness).
+- `npm run test:legacy` – executes `node test.js` directly.
+- `npm run lint` / `npm run lint:fix` – ESLint validation for popup/options/content scripts.
+- `npm run format` – Prettier formatting for JS/HTML/CSS/JSON files.
+- `npm run test:report` – runs `npm test` and emits `test-report.pdf` via `pdfkit`.
+- `npm run test:e2e` – placeholder Playwright suite for future browser automation (run `npx playwright install` once before using).
+
+> The Playwright config/test file are scaffolding only (currently skipped) but wired into npm scripts so
+> you can gradually add real extension UI tests.
 
 ## 📚 Documentation
 
