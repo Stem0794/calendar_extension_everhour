@@ -67,7 +67,7 @@ A lightweight Chrome extension that helps you track and summarize your Google Ca
 
 ## 📚 Documentation
 
-Additional usage tips and troubleshooting guides are available in the [project wiki](wiki/Home.md). The primary usage instructions are also mirrored in [wiki/How-to-use.md](wiki/How-to-use.md).
+Additional usage tips and troubleshooting guides are available in the [project wiki](wiki/Home.md). The primary usage instructions are also mirrored in [wiki/How-to-use.md](wiki/How-to-use.md), and the new [Developer Setup](wiki/Developer-setup.md) page lists the lint/test/report commands described above.
 
 ## Development Notes
 
