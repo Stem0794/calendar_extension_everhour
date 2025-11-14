@@ -1,0 +1,12 @@
+{
+  "name": "calendar-extension-everhour",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node test.js",
+    "test:report": "node scripts/run-tests-report.js"
+  },
+  "dependencies": {
+    "pdfkit": "^0.15.0"
+  }
+}

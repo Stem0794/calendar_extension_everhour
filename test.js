@@ -3,6 +3,58 @@ const cp = require('child_process');
 const fs = require('fs');
 const vm = require('vm');
 
+const TEST_START = Date.now();
+const ASSERTION_RESULTS = [];
+const ASSERT_METHODS = ['ok', 'strictEqual', 'deepStrictEqual'];
+
+function summarizeArg(arg) {
+  if (typeof arg === 'string') {
+    return arg.length > 80 ? `"${arg.slice(0, 77)}..."` : `"${arg}"`;
+  }
+  if (Array.isArray(arg)) {
+    const inner = arg.slice(0, 3).map(summarizeArg).join(', ');
+    return `[${inner}${arg.length > 3 ? ', ...' : ''}]`;
+  }
+  if (typeof arg === 'object' && arg !== null) {
+    try {
+      const json = JSON.stringify(arg);
+      return json.length > 80 ? `${json.slice(0, 77)}...` : json;
+    } catch {
+      return '[Object]';
+    }
+  }
+  return String(arg);
+}
+
+ASSERT_METHODS.forEach(method => {
+  const original = assert[method];
+  assert[method] = function instrumentedAssert(...args) {
+    const detail = `assert.${method}(${args.map(summarizeArg).join(', ')})`;
+    try {
+      const res = original.apply(assert, args);
+      ASSERTION_RESULTS.push({ name: detail, status: 'passed' });
+      return res;
+    } catch (err) {
+      ASSERTION_RESULTS.push({ name: detail, status: 'failed', error: err.message });
+      throw err;
+    }
+  };
+});
+
+process.on('exit', (code) => {
+  if (!process.env.TEST_REPORT_JSON) return;
+  const payload = {
+    status: code === 0 ? 'passed' : 'failed',
+    durationMs: Date.now() - TEST_START,
+    assertions: ASSERTION_RESULTS
+  };
+  try {
+    fs.writeFileSync(process.env.TEST_REPORT_JSON, JSON.stringify(payload, null, 2));
+  } catch (err) {
+    console.error('Failed to write test report JSON:', err);
+  }
+});
+
 // Syntax checks for popup, content and util scripts
 cp.execSync('node -c popup.js');
 cp.execSync('node -c content.js');
