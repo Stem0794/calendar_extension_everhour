@@ -3,6 +3,7 @@ const path = require('path');
 const { test, expect, chromium } = require('@playwright/test');
 
 const optionsFile = 'file://' + path.join(__dirname, '..', '..', 'options.html');
+const screenshotDir = path.join(__dirname, '..', '..', 'test-results', 'screenshots');
 const enableE2E = process.env.PLAYWRIGHT_E2E === '1';
 const userDataDir = path.join(__dirname, '..', '..', 'tmp-playwright-user');
 const describe = enableE2E ? test.describe : test.describe.skip;
@@ -70,6 +71,8 @@ describe('Options page flows', () => {
     await page.goto(optionsFile);
 
     // Add two projects in the same group
+    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+
     await page.fill('#new-project', 'Alpha');
     await page.fill('#new-project-group', 'Team');
     await page.click('#add-project');
@@ -98,6 +101,7 @@ describe('Options page flows', () => {
     const storedNames = await page.evaluate(() => window.chrome.storage.local._data.projects.map((p) => p.name));
     expect(storedNames).toEqual(['Alpha Renamed']);
 
+    await page.screenshot({ path: path.join(screenshotDir, 'options-page.png'), fullPage: true });
     await browser.close();
   });
 });

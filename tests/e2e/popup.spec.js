@@ -1,7 +1,10 @@
+const fs = require('fs');
 const path = require('path');
 const { test, expect, chromium } = require('@playwright/test');
 
 const popupFile = 'file://' + path.join(__dirname, '..', '..', 'popup.html');
+const screenshotDir = path.join(__dirname, '..', '..', 'test-results', 'screenshots');
+if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
 
 function stubChrome(events, projects, meetingProjectMap) {
   const store = { projects, meetingProjectMap, logs: [], summaryFilter: 'week', hoursFilter: 'week' };
@@ -97,5 +100,6 @@ test('popup summary and hours tabs render data', async () => {
   await page.locator('.tab', { hasText: 'Project Hours' }).click();
   await expect(page.locator('#project-hours-table td', { hasText: 'Project A' }).first()).toBeVisible();
 
+  await page.screenshot({ path: path.join(screenshotDir, 'popup-summary-hours.png'), fullPage: true });
   await browser.close();
 });

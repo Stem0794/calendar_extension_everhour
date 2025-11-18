@@ -1,7 +1,10 @@
+const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 
 const optionsFile = 'file://' + path.join(__dirname, '..', '..', 'options.html');
+const screenshotDir = path.join(__dirname, '..', '..', 'test-results', 'screenshots');
+if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
 
 function stubChromeStorage() {
   const store = { projects: [], logs: [], meetingProjectMap: {} };
@@ -65,6 +68,7 @@ test.describe('Extension smoke suite', () => {
     await page.locator('.tab', { hasText: 'Everhour' }).click();
     await expect(page.locator('#everhour-token')).toBeVisible();
 
+    await page.screenshot({ path: path.join(screenshotDir, 'options-smoke.png'), fullPage: true });
     await browser.close();
   });
 });

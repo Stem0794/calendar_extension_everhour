@@ -7,6 +7,7 @@ const PDFDocument = require('pdfkit');
 const rootDir = path.resolve(__dirname, '..');
 const jsonReport = path.join(rootDir, 'test-report.json');
 const pdfPath = path.join(rootDir, 'test-report.pdf');
+const screenshotDir = path.join(rootDir, 'test-results', 'screenshots');
 
 if (fs.existsSync(jsonReport)) fs.unlinkSync(jsonReport);
 if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
@@ -76,6 +77,27 @@ if (e2eRun.status !== 0) {
   doc.moveDown();
   doc.fontSize(10).fillColor('red').text('Playwright e2e run failed.');
   doc.fillColor('black');
+}
+
+// Screenshots (if any)
+if (fs.existsSync(screenshotDir)) {
+  const shots = fs.readdirSync(screenshotDir).filter(f => f.endsWith('.png'));
+  if (shots.length) {
+    doc.addPage();
+    doc.fontSize(14).text('Playwright Screenshots', { underline: true });
+    doc.moveDown(0.5);
+    shots.forEach((file, idx) => {
+      const label = `${idx + 1}. ${file}`;
+      doc.fontSize(10).text(label);
+      try {
+        doc.image(path.join(screenshotDir, file), { fit: [500, 400], align: 'center' });
+      } catch (e) {
+        doc.fontSize(9).fillColor('red').text(`Could not embed ${file}: ${e.message}`);
+        doc.fillColor('black');
+      }
+      doc.moveDown(0.5);
+    });
+  }
 }
 
 doc.end();
