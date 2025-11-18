@@ -11,6 +11,8 @@ const screenshotDir = path.join(rootDir, 'test-results', 'screenshots');
 
 if (fs.existsSync(jsonReport)) fs.unlinkSync(jsonReport);
 if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+if (fs.existsSync(screenshotDir)) fs.rmSync(screenshotDir, { recursive: true, force: true });
+fs.mkdirSync(screenshotDir, { recursive: true });
 
 const run = (cmd, args, extraEnv = {}) => {
   const started = Date.now();
@@ -81,21 +83,21 @@ if (e2eRun.status !== 0) {
 
 // Screenshots (if any)
 if (fs.existsSync(screenshotDir)) {
-  const shots = fs.readdirSync(screenshotDir).filter(f => f.endsWith('.png'));
+  const shots = fs.readdirSync(screenshotDir).filter(f => f.endsWith('.png')).sort();
   if (shots.length) {
     doc.addPage();
     doc.fontSize(14).text('Playwright Screenshots', { underline: true });
-    doc.moveDown(0.5);
     shots.forEach((file, idx) => {
+      if (idx > 0) doc.addPage();
       const label = `${idx + 1}. ${file}`;
+      doc.moveDown(0.5);
       doc.fontSize(10).text(label);
       try {
-        doc.image(path.join(screenshotDir, file), { fit: [500, 400], align: 'center' });
+        doc.image(path.join(screenshotDir, file), { fit: [500, 600], align: 'center' });
       } catch (e) {
         doc.fontSize(9).fillColor('red').text(`Could not embed ${file}: ${e.message}`);
         doc.fillColor('black');
       }
-      doc.moveDown(0.5);
     });
   }
 }
