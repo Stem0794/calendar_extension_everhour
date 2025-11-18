@@ -56,6 +56,15 @@ class FakeElement {
   appendChild(child) {
     child.parentNode = this;
     this.children.push(child);
+    let root = this;
+    while (root.parentNode) root = root.parentNode;
+    if (root instanceof FakeDocument) {
+      const registerIds = (node) => {
+        if (node.id) root.elementsById[node.id] = node;
+        node.children.forEach(registerIds);
+      };
+      registerIds(child);
+    }
     return child;
   }
   addEventListener(type, handler) {
@@ -87,6 +96,11 @@ class FakeDocument extends FakeElement {
   constructor() {
     super('document');
     this.elementsById = {};
+  }
+  appendChild(child) {
+    const res = super.appendChild(child);
+    if (child.id) this.elementsById[child.id] = child;
+    return res;
   }
   createElement(tagName) {
     return new FakeElement(tagName);
@@ -195,10 +209,12 @@ function loadOptionsWithData(data) {
   });
 }
 
-describe('options.js project ordering', () => {
+  describe('options.js project ordering', () => {
   afterEach(() => {
     jest.resetModules();
+    jest.clearAllMocks();
   });
+  const nextTick = () => new Promise((res) => setTimeout(res, 0));
 
   test('adds a new project within its group rather than at the end', async () => {
     const initialProjects = [
@@ -207,7 +223,7 @@ describe('options.js project ordering', () => {
       { name: 'Gamma', group: '', color: '#333' }
     ];
     loadOptionsWithData({ projects: initialProjects, logs: [] });
-    await new Promise((res) => setTimeout(res, 0));
+    await nextTick();
 
     document.getElementById('new-project').value = 'Delta';
     document.getElementById('new-project-group').value = 'Team';
@@ -228,7 +244,7 @@ describe('options.js project ordering', () => {
       { name: 'Gamma', group: 'Team', color: '#333' }
     ];
     loadOptionsWithData({ projects: initialProjects, logs: [] });
-    await new Promise((res) => setTimeout(res, 0));
+    await nextTick();
 
     const items = Array.from(document.querySelectorAll('.project-item'));
     expect(items).toHaveLength(3);
@@ -250,5 +266,76 @@ describe('options.js project ordering', () => {
 
     const names = global.chrome.storage.local._data.projects.map((p) => p.name);
     expect(names).toEqual(['Beta', 'Alpha', 'Gamma']);
+  });
+
+  test('edit & save updates project fields and meeting map', async () => {
+    const initialProjects = [
+      { name: 'Alpha', group: 'Team', color: '#111' },
+      { name: 'Beta', group: 'Team', color: '#222' }
+    ];
+    const meetingProjectMap = { 'Weekly Sync': 'Alpha', 'Other': 'Beta' };
+    loadOptionsWithData({ projects: initialProjects, logs: [], meetingProjectMap });
+    await nextTick();
+
+    const editBtn = document.querySelectorAll('.edit-btn')[0];
+    await editBtn.onclick();
+    await nextTick();
+
+    const nameInput = document.getElementById('rename-proj-0');
+    const colorInput = document.getElementById('edit-color-0');
+    const groupInput = document.getElementById('edit-group-0');
+    nameInput.value = 'Alpha Renamed';
+    colorInput.value = '#abcdef';
+    groupInput.value = 'NewGroup';
+
+    const saveBtn = document.querySelectorAll('.save-btn')[0];
+    await saveBtn.onclick();
+    await nextTick();
+
+    const projects = global.chrome.storage.local._data.projects;
+    expect(projects[0]).toMatchObject({ name: 'Alpha Renamed', color: '#abcdef', group: 'NewGroup' });
+    expect(global.chrome.storage.local._data.meetingProjectMap['Weekly Sync']).toBe('Alpha Renamed');
+  });
+
+  test('delete removes project and meeting map entry', async () => {
+    const initialProjects = [
+      { name: 'Alpha', group: '', color: '#111' },
+      { name: 'Beta', group: '', color: '#222' }
+    ];
+    const meetingProjectMap = { 'Weekly Sync': 'Alpha', 'Other': 'Beta' };
+    loadOptionsWithData({ projects: initialProjects, logs: [], meetingProjectMap });
+    await nextTick();
+
+    const deleteBtn = document.querySelectorAll('.delete-btn')[0];
+    await deleteBtn.onclick();
+    await nextTick();
+
+    const projects = global.chrome.storage.local._data.projects;
+    expect(projects.map((p) => p.name)).toEqual(['Beta']);
+    expect(global.chrome.storage.local._data.meetingProjectMap['Weekly Sync']).toBeUndefined();
+    expect(global.chrome.storage.local._data.meetingProjectMap['Other']).toBe('Beta');
+  });
+
+  test('duplicate rename triggers alert and leaves data unchanged', async () => {
+    const initialProjects = [
+      { name: 'Alpha', group: '', color: '#111' },
+      { name: 'Beta', group: '', color: '#222' }
+    ];
+    loadOptionsWithData({ projects: initialProjects, logs: [] });
+    await nextTick();
+
+    const editBtn = document.querySelectorAll('.edit-btn')[0];
+    await editBtn.onclick();
+    await nextTick();
+    const nameInput = document.getElementById('rename-proj-0');
+    nameInput.value = 'Beta';
+
+    const saveBtn = document.querySelectorAll('.save-btn')[0];
+    await saveBtn.onclick();
+    await nextTick();
+
+    const projects = global.chrome.storage.local._data.projects;
+    expect(global.alert).toHaveBeenCalled();
+    expect(projects.map((p) => p.name)).toEqual(['Alpha', 'Beta']);
   });
 });

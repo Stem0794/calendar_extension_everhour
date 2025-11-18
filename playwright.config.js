@@ -5,6 +5,10 @@ module.exports = {
   timeout: 60000,
   reporter: [['list']],
   use: {
-    headless: true
+    headless: false,
+    browserName: 'chromium',
+    launchOptions: {
+      args: ['--no-sandbox', '--disable-dev-shm-usage']
+    }
   }
 };
