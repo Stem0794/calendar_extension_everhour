@@ -1,11 +1,40 @@
+const fs = require('fs');
 const path = require('path');
-const { test, expect } = require('@playwright/test');
+const { test, expect, chromium } = require('@playwright/test');
 
 const optionsFile = 'file://' + path.join(__dirname, '..', '..', 'options.html');
 const enableE2E = process.env.PLAYWRIGHT_E2E === '1';
+const userDataDir = path.join(__dirname, '..', '..', 'tmp-playwright-user');
+const describe = enableE2E ? test.describe : test.describe.skip;
 
-test.describe(enableE2E ? 'Options page flows' : test.skip('Set PLAYWRIGHT_E2E=1 to run options page e2e'), () => {
-  test('add, edit, and delete projects using UI', async ({ page }) => {
+describe('Options page flows', () => {
+  test('add, edit, and delete projects using UI', async () => {
+    if (!fs.existsSync(userDataDir)) fs.mkdirSync(userDataDir, { recursive: true });
+    let browser;
+    let context;
+    try {
+      browser = await chromium.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-crashpad',
+          '--disable-features=Crashpad',
+          '--disable-breakpad',
+          '--enable-crash-reporter=0',
+          '--single-process',
+          '--no-zygote'
+        ]
+      });
+      context = await browser.newContext({ userAgent: 'playwright-test' });
+    } catch (e) {
+      console.error('Playwright launch failed:', e);
+      test.skip(`Skipping options e2e: browser launch blocked (${e.message})`);
+      return;
+    }
+
+    const page = await context.newPage();
+
     await page.addInitScript(() => {
       const store = { projects: [], logs: [], meetingProjectMap: {} };
       const getVal = (keys, cb) => {
@@ -68,5 +97,7 @@ test.describe(enableE2E ? 'Options page flows' : test.skip('Set PLAYWRIGHT_E2E=1
 
     const storedNames = await page.evaluate(() => window.chrome.storage.local._data.projects.map((p) => p.name));
     expect(storedNames).toEqual(['Alpha Renamed']);
+
+    await browser.close();
   });
 });
