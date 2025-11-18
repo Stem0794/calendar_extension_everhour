@@ -11,16 +11,23 @@ const pdfPath = path.join(rootDir, 'test-report.pdf');
 if (fs.existsSync(jsonReport)) fs.unlinkSync(jsonReport);
 if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
 
-const result = spawnSync('npm', ['run', 'test'], {
-  cwd: rootDir,
-  env: { ...process.env, TEST_REPORT_JSON: jsonReport },
-  stdio: 'inherit'
-});
+const run = (cmd, args, extraEnv = {}) => {
+  const started = Date.now();
+  const res = spawnSync(cmd, args, {
+    cwd: rootDir,
+    env: { ...process.env, ...extraEnv },
+    stdio: 'inherit'
+  });
+  return { status: res.status || 0, durationMs: Date.now() - started };
+};
 
-if (result.status !== 0) {
+const jestRun = run('npm', ['run', 'test'], { TEST_REPORT_JSON: jsonReport });
+if (jestRun.status !== 0) {
   console.error('Tests failed, aborting PDF creation.');
-  process.exit(result.status || 1);
+  process.exit(jestRun.status || 1);
 }
+
+const e2eRun = run('npm', ['run', 'test:e2e'], { PLAYWRIGHT_E2E: '1' });
 
 if (!fs.existsSync(jsonReport)) {
   console.error('Test report JSON missing, cannot create PDF.');
@@ -42,9 +49,11 @@ const now = new Date();
 doc.fontSize(20).text('Test Report', { align: 'center' });
 doc.moveDown(0.5);
 doc.fontSize(10).text(`Generated: ${now.toISOString()}`);
-doc.text(`Command: npm run test`);
+doc.text(`Commands: npm run test; npm run test:e2e (PLAYWRIGHT_E2E=1)`);
 doc.text(`Status: ${reportData.status || 'unknown'}`);
-doc.text(`Duration: ${reportData.durationMs || 0} ms`);
+doc.text(`Jest Duration: ${reportData.durationMs || 0} ms`);
+doc.text(`Playwright Status: ${e2eRun.status === 0 ? 'passed' : 'failed'}`);
+doc.text(`Playwright Duration: ${e2eRun.durationMs} ms`);
 doc.moveDown();
 
 doc.fontSize(14).text('Assertions', { underline: true });
@@ -62,6 +71,12 @@ doc.moveDown(0.25);
 doc.moveDown();
 doc.fontSize(14).text('Notes', { underline: true });
 doc.fontSize(9).text('Raw CLI output is available in the terminal logs.');
+
+if (e2eRun.status !== 0) {
+  doc.moveDown();
+  doc.fontSize(10).fillColor('red').text('Playwright e2e run failed.');
+  doc.fillColor('black');
+}
 
 doc.end();
 console.log(`PDF report written to ${pdfPath}`);
