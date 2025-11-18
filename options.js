@@ -73,6 +73,9 @@ async function renderProjectList() {
       lastGroup = proj.group;
     }
     const li = document.createElement('li');
+    li.classList.add('project-item');
+    li.dataset.idx = idx;
+    li.draggable = !proj._edit;
     li.style.alignItems = 'center';
     const dot = document.createElement('span');
     dot.className = 'color-dot';
@@ -260,6 +263,42 @@ async function renderProjectList() {
   list.querySelectorAll('.move-btn.down').forEach(btn=>{
     btn.onclick = ()=> move(+btn.dataset.idx,1);
   });
+
+  // Drag & drop reorder
+  let dragIdx = null;
+  list.querySelectorAll('.project-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragIdx = +item.dataset.idx;
+      e.dataTransfer.effectAllowed = 'move';
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => {
+      dragIdx = null;
+      item.classList.remove('dragging');
+      list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      if (dragIdx === null) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', async e => {
+      if (dragIdx === null) return;
+      e.preventDefault();
+      const targetIdx = +item.dataset.idx;
+      item.classList.remove('drag-over');
+      if (dragIdx === targetIdx) return;
+      let { projects = [] } = await storage.get('projects');
+      const [moved] = projects.splice(dragIdx, 1);
+      const insertIdx = dragIdx < targetIdx ? targetIdx - 1 : targetIdx;
+      projects.splice(insertIdx, 0, moved);
+      await storage.set({ projects });
+      renderProjectList();
+    });
+  });
 }
 
 // Add new project
@@ -273,7 +312,18 @@ document.getElementById('add-project').onclick = async () => {
   if (!name) return;
   let { projects = [] } = await storage.get('projects');
   if (!projects.find(p => p.name === name)) {
-    projects.push({ name, color, keywords: kwds, taskId, group });
+    const newProject = { name, color, keywords: kwds, taskId, group };
+    const normalizedGroup = group || '';
+    const lastInGroup = [...projects]
+      .map((p, i) => ({ g: p.group || '', i }))
+      .filter(p => p.g === normalizedGroup)
+      .map(p => p.i)
+      .pop();
+    if (lastInGroup === undefined) {
+      projects.push(newProject);
+    } else {
+      projects.splice(lastInGroup + 1, 0, newProject);
+    }
     await storage.set({ projects });
     renderProjectList();
   }

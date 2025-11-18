@@ -41,6 +41,8 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: #fff; margin-rig
 #project-list li { padding: 5px 8px; display: flex; align-items: center; font-size: 14px; color: #333; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px; }
 #project-list li.group-header { box-shadow: none; border: none; }
 #project-list li:last-child { margin-bottom: 0; }
+.project-item.drag-over { outline: 1px dashed #4f8cff; background: #eef6ff; }
+.project-item.dragging { opacity: 0.6; }
 .footer { font-size: 11px; color: #9fa6b7; text-align: right; margin: 18px 10px 4px 0; letter-spacing: 0.03em; }
 .filter-bar { margin-bottom: 8px; }
 .color-dot { display:inline-block; width:13px; height:13px; border-radius:50%; margin-right:6px; border: 1px solid #d1d3e0; vertical-align:middle; }
