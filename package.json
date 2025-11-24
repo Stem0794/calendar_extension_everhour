@@ -1,7 +1,7 @@
 {
   "name": "calendar-extension-everhour",
   "private": true,
-  "version": "1.0.0",
+  "version": "3.0.0",
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
