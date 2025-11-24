@@ -1,3 +1,35 @@
+function isDeclinedEventChip(chip, text) {
+  const lowerText = (text || '').toLowerCase();
+  const ariaLabel = typeof chip?.getAttribute === 'function'
+    ? (chip.getAttribute('aria-label') || '')
+    : '';
+  const combinedText = `${lowerText} ${ariaLabel.toLowerCase()}`;
+  const statusAttr = (
+    chip?.dataset?.responseStatus ||
+    chip?.dataset?.eventStatus ||
+    chip?.dataset?.status ||
+    (typeof chip?.getAttribute === 'function' ? chip.getAttribute('data-event-status') : '') ||
+    (typeof chip?.getAttribute === 'function' ? chip.getAttribute('data-response-status') : '') ||
+    ''
+  ).toLowerCase();
+  const declineKeywords = [
+    'declined',
+    'decline',
+    'refused',
+    'refusé',
+    'refusée',
+    'not attending',
+    'not going'
+  ];
+  if (declineKeywords.some(k => combinedText.includes(k) || statusAttr.includes(k))) return true;
+  const textDecoration = (
+    chip?.style?.textDecoration ||
+    chip?.style?.textDecorationLine ||
+    ''
+  ).toLowerCase();
+  return textDecoration.includes('line-through');
+}
+
 function parseEventsFromWeekView() {
   const chips = Array.from(document.querySelectorAll('[data-eventchip]'));
   const parsed = [];
@@ -16,6 +48,7 @@ function parseEventsFromWeekView() {
     const info = chip.querySelector('.XuJrye');
     if (!info) return;
     const text = info.textContent.trim();
+    if (isDeclinedEventChip(chip, text)) return;
     const match = text.match(/(?:from|de)?\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?)\s*(?:à|to|[-–])\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
     if (!match) return;
     const [, start, end, rawTitle] = match;

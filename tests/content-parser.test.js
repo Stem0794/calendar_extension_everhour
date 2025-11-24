@@ -4,14 +4,22 @@ const vm = require('vm');
 const contentCode = fs.readFileSync(require.resolve('../content.js'), 'utf8');
 
 function parseFromTexts(texts) {
-  const chips = texts.map(text => ({
-    querySelector: (sel) =>
-      sel === '.XuJrye'
-        ? {
-            textContent: text
-          }
-        : null
-  }));
+  const chips = texts.map(entry => {
+    const { text, ariaLabel = '', attributes = {}, dataset = {}, style = {} } =
+      typeof entry === 'string' ? { text: entry } : entry;
+    const attrMap = { 'aria-label': ariaLabel, ...attributes };
+    return {
+      dataset,
+      style,
+      querySelector: (sel) =>
+        sel === '.XuJrye'
+          ? {
+              textContent: text
+            }
+          : null,
+      getAttribute: (attr) => attrMap[attr] || ''
+    };
+  });
   const document = {
     querySelectorAll: (sel) => (sel === '[data-eventchip]' ? chips : [])
   };
@@ -54,6 +62,24 @@ describe('content.js parseEventsFromWeekView', () => {
 
   test('skips lunch/break events', () => {
     const events = parseFromTexts(['from 12:00 to 13:00 Lunch Break']);
+    expect(events).toHaveLength(0);
+  });
+
+  test('skips declined meetings when label mentions decline', () => {
+    const events = parseFromTexts([
+      'Declined: Mon 25 September 2023 from 9:00 to 10:30 Weekly Sync'
+    ]);
+    expect(events).toHaveLength(0);
+  });
+
+  test('skips declined meetings using aria/dataset hints', () => {
+    const events = parseFromTexts([
+      {
+        text: 'Mon 25 September 2023 from 9:00 to 10:30 Weekly Sync',
+        ariaLabel: 'Weekly Sync — you declined this event',
+        dataset: { responseStatus: 'DECLINED' }
+      }
+    ]);
     expect(events).toHaveLength(0);
   });
 });
