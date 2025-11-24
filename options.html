@@ -44,7 +44,8 @@
         <input type="color" id="new-project-color" value="#42a5f5" title="Project color"/>
         <input type="text" id="new-project-keywords" placeholder="Keywords, comma-separated" class="keyword-input" autocomplete="off"/>
         <input type="text" id="new-project-task" placeholder="Task ID" class="task-input" autocomplete="off"/>
-        <input type="text" id="new-project-group" placeholder="Group" class="group-input" autocomplete="off"/>
+        <input type="text" id="new-project-group" placeholder="Group" class="group-input" autocomplete="off" list="group-options"/>
+        <datalist id="group-options"></datalist>
         <button id="add-project">Add</button>
       </div>
       <ul id="project-list"></ul>

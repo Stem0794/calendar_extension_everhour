@@ -5,6 +5,43 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
+let groupMetaMap = {};
+
+function refreshGroupOptions(projects) {
+  const datalist = document.getElementById('group-options');
+  if (!datalist) return;
+  datalist.innerHTML = '';
+  groupMetaMap = {};
+  const seen = new Set();
+  projects.forEach(p => {
+    const name = (p.group || '').trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    groupMetaMap[key] = { name, color: p.color || '#42a5f5' };
+    const opt = document.createElement('option');
+    opt.value = name;
+    datalist.appendChild(opt);
+  });
+}
+
+function applyGroupColorSelection(groupName) {
+  const key = (groupName || '').trim().toLowerCase();
+  const match = groupMetaMap[key];
+  if (match) {
+    const colorInput = document.getElementById('new-project-color');
+    if (colorInput) colorInput.value = match.color || '#42a5f5';
+  }
+}
+
+const newProjectGroupInput = document.getElementById('new-project-group');
+if (newProjectGroupInput) {
+  ['input', 'change'].forEach(evt => {
+    newProjectGroupInput.addEventListener(evt, e => applyGroupColorSelection(e.target.value));
+  });
+}
+
 // --- TABS ---
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -55,6 +92,7 @@ document.getElementById('save-token').onclick = saveEverhourToken;
 // Project list rendering and CRUD
 async function renderProjectList() {
   const { projects = [] } = await storage.get('projects');
+  refreshGroupOptions(projects);
   const list = document.getElementById('project-list');
   list.innerHTML = '';
   const groupBounds = {};
