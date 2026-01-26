@@ -16,10 +16,11 @@ function isDeclinedEventChip(chip, text) {
     'declined',
     'decline',
     'refused',
-    'refusé',
     'refusée',
     'not attending',
-    'not going'
+    'not going',
+    'rechazado',
+    'no asistir'
   ];
   if (declineKeywords.some(k => combinedText.includes(k) || statusAttr.includes(k))) return true;
   const textDecoration = (
@@ -34,10 +35,12 @@ function parseEventsFromWeekView() {
   const chips = Array.from(document.querySelectorAll('[data-eventchip]'));
   const parsed = [];
   const months = [
-    "january","february","march","april","may","june","july",
-    "august","september","october","november","december",
-    "janvier","février","mars","avril","mai","juin","juillet",
-    "août","septembre","octobre","novembre","décembre"
+    "january", "february", "march", "april", "may", "june", "july",
+    "august", "september", "october", "november", "december",
+    "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+    "août", "septembre", "octobre", "novembre", "décembre",
+    "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+    "agosto", "septiembre", "octubre", "noviembre", "diciembre"
   ];
   const monthOnlyRegex = new RegExp(
     `^(?:${months.join('|')})(?:\\s+\\d{4})?$`,
@@ -49,7 +52,7 @@ function parseEventsFromWeekView() {
     if (!info) return;
     const text = info.textContent.trim();
     if (isDeclinedEventChip(chip, text)) return;
-    const match = text.match(/(?:from|de)?\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?)\s*(?:à|to|[-–])\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
+    const match = text.match(/(?:from|de)?\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?)\s*(?:à|a|to|[-–])\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
     if (!match) return;
     const [, start, end, rawTitle] = match;
 

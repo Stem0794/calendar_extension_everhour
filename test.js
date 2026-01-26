@@ -365,7 +365,14 @@ assert.strictEqual(eventsParsed.length, 1);
 assert.strictEqual(eventsParsed[0].date, '2023-08-05');
 
 eventsParsed = runParse('5 agosto 2023 from 9:00 to 10:00 Meeting');
-assert.strictEqual(eventsParsed.length, 0);
+assert.strictEqual(eventsParsed.length, 1);
+assert.strictEqual(eventsParsed[0].date, '2023-08-05');
+
+eventsParsed = runParse('12 enero 2024 de 14:00 a 15:30 Siesta');
+assert.strictEqual(eventsParsed.length, 1);
+assert.strictEqual(eventsParsed[0].date, '2024-01-12');
+assert.strictEqual(eventsParsed[0].title, 'Siesta');
+assert.strictEqual(eventsParsed[0].duration, 90);
 
 const complexHtml = `
 <div data-eventchip><div class="XuJrye">Mon 25 September 2023 from 9:00 to 10:30 Weekly Sync + Notes</div></div>
@@ -381,7 +388,7 @@ assert.ok(nightly);
 assert.strictEqual(nightly.duration, 180);
 assert.strictEqual(fixtures[0].comment, 'Notes');
 
-const unknownMonthHtml = `<div data-eventchip><div class="XuJrye">5 agosto 2023 from 9:00 to 10:00 Meeting</div></div>`;
+const unknownMonthHtml = `<div data-eventchip><div class="XuJrye">5 NotAMonth 2023 from 9:00 to 10:00 Meeting</div></div>`;
 ctx = { document: createContentDoc(unknownMonthHtml), chrome: { runtime: { onMessage: { addListener() { } } } }, console };
 vm.createContext(ctx); vm.runInContext(contentCode, ctx);
 assert.strictEqual(ctx.parseEventsFromWeekView().length, 0);
