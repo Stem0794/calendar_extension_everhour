@@ -31,7 +31,8 @@ module.exports = [
       sourceType: 'module',
       globals: {
         ...globals.node,
-        ...globals.jest
+        ...globals.jest,
+        ...globals.browser
       }
     },
     rules: {

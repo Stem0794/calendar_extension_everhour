@@ -204,12 +204,11 @@ function loadOptionsWithData(data) {
   jest.isolateModules(() => {
     const optionsPath = path.join(__dirname, '..', 'options.js');
     const code = fs.readFileSync(optionsPath, 'utf8');
-    // eslint-disable-next-line no-eval
     eval(code);
   });
 }
 
-  describe('options.js project ordering', () => {
+describe('options.js project ordering', () => {
   afterEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
@@ -256,7 +255,7 @@ function loadOptionsWithData(data) {
     const dragStart = { type: 'dragstart', dataTransfer };
     dragItem.dispatchEvent(dragStart);
 
-    const dropEvent = { type: 'drop', dataTransfer, preventDefault: () => {}, defaultPrevented: false };
+    const dropEvent = { type: 'drop', dataTransfer, preventDefault: () => { }, defaultPrevented: false };
     dropEvent.preventDefault = () => {
       dropEvent.defaultPrevented = true;
     };
