@@ -31,6 +31,45 @@ function getWeekKey(title, events) {
   return `${title}|${week}`;
 }
 
+// --- BETTER KEYWORD DETECTION ---
+
+// Normalize text: remove accents and lowercase
+function normalizeText(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+// Check if a keyword matches a title using word boundary matching
+function keywordMatchesTitle(normalizedTitle, keyword) {
+  const nkw = normalizeText(keyword);
+  if (!nkw) return false;
+
+  // Escape for regex
+  const escaped = nkw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // Word boundary match (handles single and multi-word phrases)
+  if (new RegExp(`\\b${escaped}\\b`).test(normalizedTitle)) return true;
+
+  // Multi-word keyword: check if all words appear individually as whole words
+  const kwWords = nkw.split(/\s+/).filter(Boolean);
+  if (kwWords.length > 1) {
+    return kwWords.every(w => {
+      const we = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${we}\\b`).test(normalizedTitle);
+    });
+  }
+
+  return false;
+}
+
+// Find the first project matching a meeting title
+function findMatchingProject(title, projects) {
+  const normalizedTitle = normalizeText(title);
+  return projects.find(p => {
+    const candidates = [p.name, ...(p.keywords || [])].filter(Boolean);
+    return candidates.some(kw => keywordMatchesTitle(normalizedTitle, kw));
+  })?.name || '';
+}
+
 // --- ONBOARDING ---
 async function maybeShowOnboarding() {
   const { onboarded } = await chrome.storage.local.get("onboarded");
@@ -107,6 +146,12 @@ document.getElementById('open-options').onclick = () => {
   chrome.runtime.openOptionsPage();
 };
 
+// Refresh button
+document.getElementById('refresh-btn').onclick = () => {
+  const activeTab = document.querySelector('.tab.active')?.dataset?.tab;
+  if (activeTab === 'hours') loadProjectHours();
+  else loadSummary();
+};
 
 // --- PROJECT MAP ---
 async function getMeetingToProjectMap() {
@@ -248,6 +293,123 @@ async function removeFromEverhour(addBtn, remBtn) {
   }
 }
 
+// --- LOG ALL ---
+async function logAllToEverhour() {
+  const btn = document.getElementById('log-all-btn');
+  const statusEl = document.getElementById('log-all-status');
+  btn.disabled = true;
+  btn.textContent = '⌛ Logging...';
+  statusEl.style.display = 'block';
+  statusEl.className = 'log-all-status';
+  statusEl.textContent = 'Sending all meetings to Everhour...';
+
+  const { everhourToken = '' } = await storage.get('everhourToken');
+  if (!everhourToken) {
+    alert('Please set your Everhour token in Settings');
+    btn.disabled = false;
+    btn.textContent = 'Log All';
+    statusEl.style.display = 'none';
+    return;
+  }
+
+  // Get events from active Google Calendar tab
+  const events = await new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]) { resolve([]); return; }
+      chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', (response) => {
+        if (chrome.runtime.lastError || !Array.isArray(response)) {
+          resolve([]);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  });
+
+  if (!events.length) {
+    statusEl.textContent = 'No events found. Make sure Google Calendar is open in Week View.';
+    statusEl.className = 'log-all-status error';
+    btn.disabled = false;
+    btn.textContent = 'Log All';
+    return;
+  }
+
+  const { projects = [] } = await storage.get('projects');
+  const map = await getMeetingToProjectMap();
+  const { everhourEntries = {} } = await storage.get('everhourEntries');
+
+  // Group events by title
+  const grouped = {};
+  for (const ev of events) {
+    if (!ev.title || !ev.duration) continue;
+    if (!grouped[ev.title]) grouped[ev.title] = [];
+    grouped[ev.title].push(ev);
+  }
+
+  let sent = 0, skipped = 0, errors = 0;
+
+  for (const [title, titleEvents] of Object.entries(grouped)) {
+    const project = map[title];
+    if (!project) { skipped++; continue; }
+
+    const taskId = projects.find(p => p.name === project)?.taskId;
+    if (!taskId) { skipped++; continue; }
+
+    const weekKey = getWeekKey(title, titleEvents);
+    const storedIds = everhourEntries[weekKey] || [];
+    if (storedIds.length) { skipped++; continue; } // already sent
+
+    statusEl.textContent = `Sending "${title}"...`;
+    const entryIds = [];
+    try {
+      for (const ev of titleEvents) {
+        const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': everhourToken
+          },
+          body: JSON.stringify({
+            task: taskId,
+            date: ev.date,
+            time: Math.round(ev.duration * 60),
+            comment: ev.comment || ''
+          })
+        });
+        if (!res.ok) throw new Error('Request failed');
+        const data = await res.json().catch(() => null);
+        if (data?.id) entryIds.push(data.id);
+      }
+      everhourEntries[weekKey] = entryIds;
+      sent++;
+      await addLog(`Sent "${title}" to Everhour`);
+    } catch (e) {
+      errors++;
+      console.error(`Failed to send "${title}":`, e);
+    }
+  }
+
+  await storage.set({ everhourEntries });
+
+  // Show result
+  const parts = [];
+  if (sent) parts.push(`${sent} sent`);
+  if (skipped) parts.push(`${skipped} skipped`);
+  if (errors) parts.push(`${errors} failed`);
+  statusEl.textContent = parts.join(', ') || 'Nothing to send';
+  statusEl.className = errors ? 'log-all-status error' : 'log-all-status success';
+
+  btn.disabled = false;
+  btn.textContent = 'Log All';
+
+  // Refresh the summary view to update button states
+  loadSummary();
+
+  setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+}
+
+document.getElementById('log-all-btn').onclick = logAllToEverhour;
+
 // --- SUMMARY TAB ---
 async function loadSummary() {
   const filter = document.getElementById('summary-filter').value;
@@ -285,14 +447,10 @@ async function loadSummary() {
         for (let [title, mins] of rows) {
           const tr = document.createElement('tr');
           const hours = Math.round((mins / 60) * 100) / 100;
-          // --- Project auto-link (multi-keyword) ---
+          // --- Project auto-link (improved keyword detection) ---
           let assignedProject = map[title] || '';
           if (!assignedProject && projects.length) {
-            const lowerTitle = title.toLowerCase();
-            assignedProject = projects.find(p =>
-              [p.name.toLowerCase(), ...(p.keywords||[]).map(k=>k.toLowerCase())]
-                .some(kw => kw && lowerTitle.includes(kw))
-            )?.name || '';
+            assignedProject = findMatchingProject(title, projects);
             if (assignedProject) {
               map[title] = assignedProject;
               setMeetingToProjectMap(map);
@@ -345,7 +503,6 @@ async function loadSummary() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        // No export button in popup
       } else {
         // --- DAY FILTER ---
         const dayIdx = JS_DAY_IDX[filter]; // Correct mapping
@@ -378,11 +535,7 @@ async function loadSummary() {
           const hours = Math.round((mins / 60) * 100) / 100;
           let assignedProject = map[title] || '';
           if (!assignedProject && projects.length) {
-            const lowerTitle = title.toLowerCase();
-            assignedProject = projects.find(p =>
-              [p.name.toLowerCase(), ...(p.keywords||[]).map(k=>k.toLowerCase())]
-                .some(kw => kw && lowerTitle.includes(kw))
-            )?.name || '';
+            assignedProject = findMatchingProject(title, projects);
             if (assignedProject) {
               map[title] = assignedProject;
               setMeetingToProjectMap(map);
@@ -435,7 +588,6 @@ async function loadSummary() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        // No export button in popup
       }
     });
   });
@@ -486,7 +638,6 @@ async function loadProjectHours() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        // No export button in popup
       } else {
         // Per day
         const dayIdx = JS_DAY_IDX[filter];
@@ -527,7 +678,6 @@ async function loadProjectHours() {
           table.appendChild(tr);
         }
         container.appendChild(table);
-        // No export button in popup
       }
     });
   });

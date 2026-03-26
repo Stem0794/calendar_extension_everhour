@@ -1,18 +1,23 @@
 {
   "manifest_version": 3,
   "name": "Weekly Calendar Project Tracker",
-  "version": "3.0.1",
+  "version": "4.0.0",
   "description": "Track, color-code, and export your Google Calendar meetings and project hours by week or day.",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["https://api.everhour.com/tasks/*/time"],
+  "permissions": ["activeTab", "storage", "sidePanel"],
+  "host_permissions": ["https://api.everhour.com/*"],
   "options_page": "options.html",
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icon.png",
       "48": "icon.png",
       "128": "icon.png"
     }
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
