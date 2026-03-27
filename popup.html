@@ -9,8 +9,8 @@
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
       background: #f8f9fa;
       margin: 0;
-      min-width: 520px;
-      min-height: 430px;
+      min-width: 320px;
+      min-height: 100vh;
     }
   </style>
 </head>
@@ -35,8 +35,11 @@
         <option value="thursday">Thursday</option>
         <option value="friday">Friday</option>
       </select>
-      <button id="open-options" style="margin-left:8px;margin-top:0;">Settings</button>
+      <button id="log-all-btn" title="Log all assigned meetings to Everhour">Log All</button>
+      <button id="refresh-btn" title="Refresh events from calendar">Refresh</button>
+      <button id="open-options" style="margin-left:auto;margin-top:0;">Settings</button>
     </div>
+    <div id="log-all-status" style="display:none;"></div>
     <div id="meeting-list"></div>
   </div>
 
