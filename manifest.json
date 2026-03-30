@@ -3,7 +3,17 @@
   "name": "Weekly Calendar Project Tracker",
   "version": "4.0.0",
   "description": "Track, color-code, and export your Google Calendar meetings and project hours by week or day.",
-  "permissions": ["activeTab", "storage", "sidePanel"],
+  "permissions": ["activeTab", "storage", "sidePanel", "notifications"],
+  "commands": {
+    "log-all": {
+      "suggested_key": { "default": "Alt+Shift+L" },
+      "description": "Log all meetings to Everhour"
+    },
+    "refresh-events": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "Refresh calendar events"
+    }
+  },
   "host_permissions": ["https://api.everhour.com/*"],
   "options_page": "options.html",
   "action": {

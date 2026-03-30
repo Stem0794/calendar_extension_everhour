@@ -4,3 +4,4 @@ test-report.pdf
 playwright-report/
 test-results/
 .DS_Store
+.env
