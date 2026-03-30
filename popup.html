@@ -7,7 +7,7 @@
   <style>
     body {
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
-      background: #f8f9fa;
+      background: var(--bg-body);
       margin: 0;
       min-width: 320px;
       min-height: 100vh;
@@ -22,6 +22,7 @@
   <div id="tabs">
     <div class="tab active" data-tab="summary">Summary</div>
     <div class="tab" data-tab="hours">Project Hours</div>
+    <div class="tab" data-tab="diff">Week Diff</div>
   </div>
 
   <div id="summary" class="tab-content active">
@@ -35,14 +36,19 @@
         <option value="thursday">Thursday</option>
         <option value="friday">Friday</option>
       </select>
+      <label class="filter-checkbox"><input type="checkbox" id="unassigned-filter"> Unassigned only</label>
       <button id="log-all-btn" title="Log all assigned meetings to Everhour">Log All</button>
+      <button id="undo-log-all-btn" title="Undo last Log All" style="display:none;">Undo</button>
       <button id="refresh-btn" title="Refresh events from calendar">Refresh</button>
+      <button id="sync-check-btn" title="Check Everhour sync status">Sync Check</button>
+      <button id="dark-mode-toggle" title="Toggle dark mode" class="icon-btn">🌙</button>
       <button id="open-options" style="margin-left:auto;margin-top:0;">Settings</button>
     </div>
     <div id="log-all-status" style="display:none;"></div>
+    <div id="sync-check-status" style="display:none;"></div>
+    <div id="offline-queue-status" style="display:none;"></div>
     <div id="meeting-list"></div>
   </div>
-
 
   <div id="hours" class="tab-content">
     <div class="filter-bar">
@@ -57,6 +63,14 @@
       </select>
     </div>
     <div id="project-hours-table"></div>
+  </div>
+
+  <div id="diff" class="tab-content">
+    <div class="filter-bar">
+      <label style="font-size:13px;">Weekly Diff: current vs. last saved week</label>
+      <button id="save-week-snapshot" title="Save this week as baseline">Save Snapshot</button>
+    </div>
+    <div id="diff-content"></div>
   </div>
 
   <script src="util.js"></script>

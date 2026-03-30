@@ -1,0 +1,12 @@
+{
+  "name": "calendar-tracker-slack-bot",
+  "version": "1.0.0",
+  "description": "Posts weekly project hours summary to Slack from Everhour",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
