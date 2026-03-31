@@ -8,9 +8,11 @@
     body {
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
       background: var(--bg-body);
+      color: var(--text-primary);
       margin: 0;
       min-width: 320px;
       min-height: 100vh;
+      transition: background 0.25s ease, color 0.25s ease;
     }
   </style>
 </head>
@@ -37,12 +39,17 @@
         <option value="friday">Friday</option>
       </select>
       <label class="filter-checkbox"><input type="checkbox" id="unassigned-filter"> Unassigned only</label>
-      <button id="log-all-btn" title="Log all assigned meetings to Everhour">Log All</button>
-      <button id="undo-log-all-btn" title="Undo last Log All" style="display:none;">Undo</button>
-      <button id="refresh-btn" title="Refresh events from calendar">Refresh</button>
-      <button id="sync-check-btn" title="Check Everhour sync status">Sync Check</button>
-      <button id="dark-mode-toggle" title="Toggle dark mode" class="icon-btn">🌙</button>
-      <button id="open-options" style="margin-left:auto;margin-top:0;">Settings</button>
+      <span class="btn-group">
+        <button id="log-all-btn" title="Log all assigned meetings to Everhour">Log All</button>
+        <button id="undo-log-all-btn" title="Undo last Log All" style="display:none;">Undo</button>
+      </span>
+      <span class="btn-group">
+        <button id="refresh-btn" title="Refresh events from calendar">Refresh</button>
+        <button id="sync-check-btn" title="Check Everhour sync status">Sync Check</button>
+      </span>
+      <span class="btn-group" style="margin-left:auto;">
+        <button id="open-options" style="margin-top:0;">Settings</button>
+      </span>
     </div>
     <div id="log-all-status" style="display:none;"></div>
     <div id="sync-check-status" style="display:none;"></div>

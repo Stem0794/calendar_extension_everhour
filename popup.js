@@ -198,6 +198,25 @@ async function setMeetingToProjectMap(map) {
   await storage.set({ meetingProjectMap: map });
 }
 
+// --- TOAST NOTIFICATIONS (inline, non-blocking) ---
+function showToast(message, type = 'info', duration = 3500) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('visible'));
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
 // --- CHROME NOTIFICATIONS ---
 function showNotification(title, message) {
   if (chrome.notifications) {
@@ -215,24 +234,24 @@ function showNotification(title, message) {
 async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
   const { everhourToken = '' } = await storage.get('everhourToken');
   if (!everhourToken) {
-    alert('Please set your Everhour token');
+    showToast('Please set your Everhour token in Settings', 'error');
     return;
   }
   if (!assignedProject) {
-    alert('Select a project for this meeting');
+    showToast('Select a project for this meeting first', 'error');
     return;
   }
   const { projects = [] } = await storage.get('projects');
   const taskId = projects.find(p => p.name === assignedProject)?.taskId;
   if (!taskId) {
-    alert('Project is missing Everhour task ID');
+    showToast('Project is missing Everhour task ID', 'error');
     return;
   }
   const eventsToSend = Array.isArray(eventsArr)
     ? eventsArr.filter(ev => ev.title === title)
     : [];
   if (!eventsToSend.length) {
-    alert('Could not find event details');
+    showToast('Could not find event details', 'error');
     return;
   }
   // Duplicate detection: check if already logged for this week
@@ -294,11 +313,12 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
 async function removeFromEverhour(addBtn, remBtn) {
   const { everhourToken = '' } = await storage.get('everhourToken');
   if (!everhourToken) {
-    alert('Please set your Everhour token');
+    showToast('Please set your Everhour token in Settings', 'error');
     return;
   }
   const weekKey = addBtn.dataset.weekKey || '';
-  let ids = JSON.parse(addBtn.dataset.entryIds || '[]');
+  let ids = [];
+  try { ids = JSON.parse(addBtn.dataset.entryIds || '[]'); } catch { /* corrupted data */ }
   if (!ids.length && weekKey) {
     const { everhourEntries = {} } = await storage.get('everhourEntries');
     ids = everhourEntries[weekKey] || [];
@@ -363,7 +383,7 @@ async function logAllToEverhour() {
 
   const { everhourToken = '' } = await storage.get('everhourToken');
   if (!everhourToken) {
-    alert('Please set your Everhour token in Settings');
+    showToast('Please set your Everhour token in Settings', 'error');
     btn.disabled = false;
     btn.textContent = 'Log All';
     statusEl.style.display = 'none';
@@ -482,7 +502,7 @@ async function undoLogAll() {
   const undoBtn = document.getElementById('undo-log-all-btn');
   const statusEl = document.getElementById('log-all-status');
   const { lastLogAllBatch = {}, everhourToken = '' } = await storage.get(['lastLogAllBatch', 'everhourToken']);
-  if (!everhourToken) { alert('Set your Everhour token first'); return; }
+  if (!everhourToken) { showToast('Set your Everhour token in Settings first', 'error'); return; }
 
   const allIds = Object.values(lastLogAllBatch).flat();
   if (!allIds.length) {
@@ -535,11 +555,130 @@ async function undoLogAll() {
 document.getElementById('undo-log-all-btn').onclick = undoLogAll;
 
 // --- SUMMARY TAB ---
+
+// Shared helper: builds a summary table from a set of events
+function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassignedOnly) {
+  const totals = {};
+  const eventsByTitle = {};
+  for (const ev of sourceEvents) {
+    if (!ev.title || !ev.duration) continue;
+    totals[ev.title] = (totals[ev.title] || 0) + ev.duration;
+    if (!eventsByTitle[ev.title]) eventsByTitle[ev.title] = [];
+    eventsByTitle[ev.title].push(ev);
+  }
+  const rows = Object.entries(totals)
+    .map(([title, mins]) => [title, mins])
+    .sort((a, b) => b[1] - a[1]);
+
+  const table = document.createElement('table');
+  table.className = 'summary-table';
+  const header = document.createElement('tr');
+  header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th><th></th>";
+  table.appendChild(header);
+
+  for (const [title, mins] of rows) {
+    const tr = document.createElement('tr');
+    const hours = Math.round((mins / 60) * 100) / 100;
+
+    // Project auto-link (keyword detection + auto-suggest)
+    let assignedProject = map[title] || '';
+    let isSuggested = false;
+    if (!assignedProject && projects.length) {
+      assignedProject = findMatchingProject(title, projects);
+      if (!assignedProject) {
+        assignedProject = autoSuggestProject(title, map);
+        if (assignedProject) isSuggested = true;
+      }
+      if (assignedProject && !isSuggested) {
+        map[title] = assignedProject;
+        setMeetingToProjectMap(map);
+      }
+    }
+
+    // Unassigned filter: skip rows with a confirmed project
+    if (unassignedOnly && assignedProject && !isSuggested) continue;
+
+    const sel = createProjectSelect(projects, assignedProject);
+    let suggestLabel = null;
+    if (isSuggested) {
+      sel.classList.add('suggested');
+      sel.title = 'Auto-suggested based on past assignments — click to confirm or change';
+      suggestLabel = document.createElement('span');
+      suggestLabel.className = 'suggest-badge';
+      suggestLabel.textContent = 'suggested';
+    }
+    sel.onchange = async () => {
+      map[title] = sel.value;
+      assignedProject = sel.value;
+      sel.classList.remove('suggested');
+      sel.title = sel.options[sel.selectedIndex]?.text || '';
+      if (suggestLabel) { suggestLabel.remove(); suggestLabel = null; }
+      const proj = projects.find(p => p.name === sel.value);
+      if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+      else tr.style.background = '';
+      sel.title = sel.options[sel.selectedIndex]?.text || '';
+      await setMeetingToProjectMap(map);
+    };
+
+    if (assignedProject) {
+      const proj = projects.find(p => p.name === assignedProject);
+      if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+    }
+
+    const meetingCell = document.createElement('td');
+    meetingCell.textContent = title;
+    tr.appendChild(meetingCell);
+
+    const hoursCell = document.createElement('td');
+    hoursCell.textContent = hours;
+    tr.appendChild(hoursCell);
+
+    const td = document.createElement('td');
+    td.appendChild(sel);
+    if (suggestLabel) td.appendChild(suggestLabel);
+    tr.appendChild(td);
+
+    const addTd = document.createElement('td');
+    addTd.className = 'actions';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'everhour-btn';
+    addBtn.title = 'Add to Everhour';
+    const remBtn = document.createElement('button');
+    remBtn.className = 'remove-btn';
+    remBtn.title = 'Remove entry';
+    remBtn.textContent = '×';
+
+    const titleEvents = eventsByTitle[title] || [];
+    const weekKey = getWeekKey(title, titleEvents);
+    addBtn.dataset.weekKey = weekKey;
+    const storedIds = everhourEntries[weekKey] || [];
+    addBtn.dataset.entryIds = JSON.stringify(storedIds);
+    addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
+    addBtn.textContent = storedIds.length ? '✓' : '+';
+    addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
+    remBtn.onclick = () => removeFromEverhour(addBtn, remBtn);
+    addTd.appendChild(addBtn);
+    addTd.appendChild(remBtn);
+    tr.appendChild(addTd);
+    table.appendChild(tr);
+  }
+
+  // Total hours row
+  const totalMins = rows.reduce((sum, r) => sum + r[1], 0);
+  const totalTr = document.createElement('tr');
+  totalTr.className = 'total-row';
+  totalTr.innerHTML = `<td><strong>Total</strong></td><td><strong>${Math.round((totalMins / 60) * 100) / 100}</strong></td><td></td><td></td>`;
+  table.appendChild(totalTr);
+
+  return table;
+}
+
 async function loadSummary() {
   const filter = document.getElementById('summary-filter').value;
+  const container = document.getElementById('meeting-list');
+  container.innerHTML = '<div class="loading">Loading events...</div>';
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
-      const container = document.getElementById('meeting-list');
       container.innerHTML = '';
       if (chrome.runtime.lastError) {
         container.innerHTML = "<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>";
@@ -553,196 +692,22 @@ async function loadSummary() {
       const map = await getMeetingToProjectMap();
       const { everhourEntries = {} } = await storage.get('everhourEntries');
       const unassignedOnly = document.getElementById('unassigned-filter')?.checked || false;
-      // --- WEEK FILTER ---
+
       if (filter === 'week') {
-        // Week logic
-        const totals = {};
-        for (let ev of events) {
-          if (!ev.title || !ev.duration) continue;
-          totals[ev.title] = (totals[ev.title] || 0) + ev.duration;
-        }
-        const rows = Object.entries(totals)
-          .map(([title, mins]) => [title, mins])
-          .sort((a, b) => b[1] - a[1]);
-        const table = document.createElement('table');
-        table.className = 'summary-table';
-        const header = document.createElement('tr');
-        header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th><th></th>";
-        table.appendChild(header);
-        for (let [title, mins] of rows) {
-          const tr = document.createElement('tr');
-          const hours = Math.round((mins / 60) * 100) / 100;
-          // --- Project auto-link (improved keyword detection + auto-suggest) ---
-          let assignedProject = map[title] || '';
-          let isSuggested = false;
-          if (!assignedProject && projects.length) {
-            assignedProject = findMatchingProject(title, projects);
-            if (!assignedProject) {
-              assignedProject = autoSuggestProject(title, map);
-              if (assignedProject) isSuggested = true;
-            }
-            if (assignedProject && !isSuggested) {
-              map[title] = assignedProject;
-              setMeetingToProjectMap(map);
-            }
-          }
-          // Unassigned filter: skip rows with a project
-          if (unassignedOnly && (assignedProject && !isSuggested)) continue;
-          const sel = createProjectSelect(projects, assignedProject);
-          if (isSuggested) sel.classList.add('suggested');
-          sel.onchange = async () => {
-            map[title] = sel.value;
-            assignedProject = sel.value;
-            sel.classList.remove('suggested');
-            const proj = projects.find(p => p.name === sel.value);
-            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
-            else tr.style.background = '';
-            sel.title = sel.options[sel.selectedIndex]?.text || '';
-            await setMeetingToProjectMap(map);
-          };
-          if (assignedProject) {
-            const proj = projects.find(p => p.name === assignedProject);
-            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
-          }
-          const meetingCell = document.createElement('td');
-          meetingCell.textContent = title;
-          tr.appendChild(meetingCell);
-          const hoursCell = document.createElement('td');
-          hoursCell.textContent = hours;
-          tr.appendChild(hoursCell);
-          const td = document.createElement('td');
-          td.appendChild(sel);
-          tr.appendChild(td);
-          const addTd = document.createElement('td');
-          addTd.className = 'actions';
-          const addBtn = document.createElement('button');
-          addBtn.className = 'everhour-btn';
-          addBtn.title = 'Add to Everhour';
-          const remBtn = document.createElement('button');
-          remBtn.className = 'remove-btn';
-          remBtn.title = 'Remove entry';
-          remBtn.textContent = '×';
-          const titleEvents = events.filter(ev => ev.title === title);
-          const weekKey = getWeekKey(title, titleEvents);
-          addBtn.dataset.weekKey = weekKey;
-          const storedIds = everhourEntries[weekKey] || [];
-          addBtn.dataset.entryIds = JSON.stringify(storedIds);
-          addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
-          addBtn.textContent = storedIds.length ? '✓' : '+';
-          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
-          remBtn.onclick = () => removeFromEverhour(addBtn, remBtn);
-          addTd.appendChild(addBtn);
-          addTd.appendChild(remBtn);
-          tr.appendChild(addTd);
-          table.appendChild(tr);
-        }
-        // Total hours row
-        const totalMins = rows.reduce((sum, r) => sum + r[1], 0);
-        const totalTr = document.createElement('tr');
-        totalTr.className = 'total-row';
-        totalTr.innerHTML = `<td><strong>Total</strong></td><td><strong>${Math.round((totalMins / 60) * 100) / 100}</strong></td><td></td><td></td>`;
-        table.appendChild(totalTr);
-        container.appendChild(table);
+        container.appendChild(buildSummaryTable(events, projects, map, everhourEntries, unassignedOnly));
       } else {
-        // --- DAY FILTER ---
-        const dayIdx = JS_DAY_IDX[filter]; // Correct mapping
+        const dayIdx = JS_DAY_IDX[filter];
         const filteredEvents = events.filter(ev => ev.dayOfWeek === dayIdx);
         if (!filteredEvents.length) {
           container.innerHTML = `<b>No meetings for ${DAYS_LABEL[DAYS_EN.indexOf(filter)]}.</b>`;
           return;
         }
-        // Group and display as for week, but only for filteredEvents
-        const totals = {};
-        for (let ev of filteredEvents) {
-          if (!ev.title || !ev.duration) continue;
-          totals[ev.title] = (totals[ev.title] || 0) + ev.duration;
-        }
-        const rows = Object.entries(totals)
-          .map(([title, mins]) => [title, mins])
-          .sort((a, b) => b[1] - a[1]);
         const label = document.createElement('div');
         label.style.margin = "10px 0 6px 0";
         label.style.fontWeight = "bold";
         label.textContent = DAYS_LABEL[DAYS_EN.indexOf(filter)];
         container.appendChild(label);
-        const table = document.createElement('table');
-        table.className = 'summary-table';
-        const header = document.createElement('tr');
-        header.innerHTML = "<th>Meeting</th><th>Hours</th><th>Project</th><th></th>";
-        table.appendChild(header);
-        for (let [title, mins] of rows) {
-          const tr = document.createElement('tr');
-          const hours = Math.round((mins / 60) * 100) / 100;
-          let assignedProject = map[title] || '';
-          let isSuggested = false;
-          if (!assignedProject && projects.length) {
-            assignedProject = findMatchingProject(title, projects);
-            if (!assignedProject) {
-              assignedProject = autoSuggestProject(title, map);
-              if (assignedProject) isSuggested = true;
-            }
-            if (assignedProject && !isSuggested) {
-              map[title] = assignedProject;
-              setMeetingToProjectMap(map);
-            }
-          }
-          // Unassigned filter: skip rows with a project
-          if (unassignedOnly && (assignedProject && !isSuggested)) continue;
-          const sel = createProjectSelect(projects, assignedProject);
-          if (isSuggested) sel.classList.add('suggested');
-          sel.onchange = async () => {
-            map[title] = sel.value;
-            assignedProject = sel.value;
-            sel.classList.remove('suggested');
-            const proj = projects.find(p => p.name === sel.value);
-            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
-            else tr.style.background = '';
-            sel.title = sel.options[sel.selectedIndex]?.text || '';
-            await setMeetingToProjectMap(map);
-          };
-          if (assignedProject) {
-            const proj = projects.find(p => p.name === assignedProject);
-            if (proj) tr.style.background = addAlpha(proj.color, 0.2);
-          }
-          const meetingCell = document.createElement('td');
-          meetingCell.textContent = title;
-          tr.appendChild(meetingCell);
-          const hoursCell = document.createElement('td');
-          hoursCell.textContent = hours;
-          tr.appendChild(hoursCell);
-          const td = document.createElement('td');
-          td.appendChild(sel);
-          tr.appendChild(td);
-          const addTd = document.createElement('td');
-          addTd.className = 'actions';
-          const addBtn = document.createElement('button');
-          addBtn.className = 'everhour-btn';
-          addBtn.title = 'Add to Everhour';
-          const remBtn = document.createElement('button');
-          remBtn.className = 'remove-btn';
-          remBtn.title = 'Remove entry';
-          remBtn.textContent = "×";
-          const titleEvents = filteredEvents.filter(ev => ev.title === title);
-          const weekKey = getWeekKey(title, titleEvents);
-          addBtn.dataset.weekKey = weekKey;
-          const storedIds = everhourEntries[weekKey] || [];
-          addBtn.dataset.entryIds = JSON.stringify(storedIds);
-          addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
-          addBtn.textContent = storedIds.length ? '✓' : '+';
-          addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
-          remBtn.onclick = () => removeFromEverhour(addBtn, remBtn);
-          addTd.appendChild(addBtn);
-          addTd.appendChild(remBtn);
-          tr.appendChild(addTd);
-          table.appendChild(tr);
-        }
-        // Total hours row (day view)
-        const totalMins = rows.reduce((sum, r) => sum + r[1], 0);
-        const totalTr = document.createElement('tr');
-        totalTr.className = 'total-row';
-        totalTr.innerHTML = `<td><strong>Total</strong></td><td><strong>${Math.round((totalMins / 60) * 100) / 100}</strong></td><td></td><td></td>`;
-        table.appendChild(totalTr);
-        container.appendChild(table);
+        container.appendChild(buildSummaryTable(filteredEvents, projects, map, everhourEntries, unassignedOnly));
       }
     });
   });
@@ -758,10 +723,15 @@ document.getElementById('unassigned-filter').onchange = () => loadSummary();
 // --- PROJECT HOURS TAB ---
 async function loadProjectHours() {
   const filter = document.getElementById('hours-filter').value;
+  const container = document.getElementById('project-hours-table');
+  container.innerHTML = '<div class="loading">Loading project hours...</div>';
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
-      const container = document.getElementById('project-hours-table');
       container.innerHTML = '';
+      if (chrome.runtime.lastError) {
+        container.innerHTML = "<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>";
+        return;
+      }
       if (!Array.isArray(events) || events.length === 0) {
         container.innerHTML = "<b>No events found!</b>";
         return;
@@ -856,7 +826,7 @@ async function saveWeekSnapshot() {
     });
   });
   if (!events.length) {
-    alert('No events to snapshot. Open Google Calendar in Week View.');
+    showToast('No events to snapshot. Open Google Calendar in Week View.', 'error');
     return;
   }
   const map = await getMeetingToProjectMap();
@@ -870,13 +840,13 @@ async function saveWeekSnapshot() {
   }
   await storage.set({ weekSnapshot: snapshot, weekSnapshotDate: new Date().toISOString() });
   await addLog('Saved week snapshot');
-  alert('Snapshot saved!');
+  showToast('Snapshot saved!', 'success');
   loadDiffView();
 }
 
 async function loadDiffView() {
   const container = document.getElementById('diff-content');
-  container.innerHTML = '';
+  container.innerHTML = '<div class="loading">Loading diff...</div>';
   const { weekSnapshot, weekSnapshotDate } = await storage.get(['weekSnapshot', 'weekSnapshotDate']);
   if (!weekSnapshot) {
     container.innerHTML = '<b>No snapshot saved yet. Click "Save Snapshot" to save the current week as a baseline.</b>';
@@ -1037,25 +1007,19 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.offlineQueue) showOfflineQueueStatus();
 });
 
-// --- DARK MODE (Feature: CSS toggle) ---
+// --- DARK MODE (apply stored preference) ---
 async function initDarkMode() {
   const { darkMode = false } = await storage.get('darkMode');
   if (darkMode) document.body.classList.add('dark');
-  updateDarkModeIcon(darkMode);
 }
-
-function updateDarkModeIcon(isDark) {
-  const btn = document.getElementById('dark-mode-toggle');
-  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
-}
-
-document.getElementById('dark-mode-toggle').onclick = async () => {
-  const isDark = document.body.classList.toggle('dark');
-  await storage.set({ darkMode: isDark });
-  updateDarkModeIcon(isDark);
-};
-
 initDarkMode();
+
+// Re-apply if changed from Settings page while side panel is open
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.darkMode) {
+    document.body.classList.toggle('dark', changes.darkMode.newValue);
+  }
+});
 
 // Initialize UI with last used state
 restoreState();

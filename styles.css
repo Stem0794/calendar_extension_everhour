@@ -34,6 +34,8 @@
   --onboarding-bg: #e3edfa;
   --onboarding-border: #aacee6;
   --total-row-bg: #f0f4f8;
+  --warning: #e67e22;
+  --warning-hover: #d35400;
 }
 
 /* --- Dark mode --- */
@@ -72,6 +74,8 @@ body.dark {
   --onboarding-bg: #1e2a3a;
   --onboarding-border: #2a4a6a;
   --total-row-bg: #2a2d35;
+  --warning: #e8913a;
+  --warning-hover: #d67a2a;
 }
 
 /* --- Layout --- */
@@ -140,6 +144,7 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: var(--bg-input-w
 /* --- Misc --- */
 .footer { font-size: 11px; color: var(--text-dim); text-align: right; margin: 18px 10px 4px 0; letter-spacing: 0.03em; }
 .filter-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.btn-group { display: inline-flex; gap: 3px; align-items: center; flex-shrink: 0; }
 .color-dot { display:inline-block; width:13px; height:13px; border-radius:50%; margin-right:6px; border: 1px solid var(--border-light); vertical-align:middle; }
 .keyword-input { width:110px; margin-left: 4px;}
 .rename-input { width:95px; margin-right: 4px;}
@@ -159,22 +164,17 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: var(--bg-input-w
 .delete-btn, .move-btn { margin-top: 0; }
 .log-list { list-style:none; padding:8px; border:1px solid var(--border-light); border-radius:6px; max-height:150px; overflow-y:auto; font-size:13px; box-shadow: 0 1px 2px var(--shadow-card); }
 
-/* Log All button */
-#log-all-btn { margin-top: 0; padding: 5px 12px; font-size: 13px; background: var(--success); }
+/* Toolbar buttons (shared) */
+.toolbar-btn, #log-all-btn, #undo-log-all-btn, #refresh-btn, #sync-check-btn {
+  margin-top: 0; padding: 5px 12px; font-size: 13px;
+}
+#log-all-btn { background: var(--success); }
 #log-all-btn:hover { background: var(--success-hover); }
 #log-all-btn:disabled { background: #9fc5ab; cursor: wait; }
-
-/* Undo Log All button */
-#undo-log-all-btn { margin-top: 0; padding: 5px 12px; font-size: 13px; background: #e67e22; }
-#undo-log-all-btn:hover { background: #d35400; }
-
-/* Refresh button */
-#refresh-btn { margin-top: 0; padding: 5px 12px; font-size: 13px; background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border-input); }
-#refresh-btn:hover { background: var(--bg-header); }
-
-/* Sync check button */
-#sync-check-btn { margin-top: 0; padding: 5px 12px; font-size: 13px; background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border-input); }
-#sync-check-btn:hover { background: var(--bg-header); }
+#undo-log-all-btn { background: var(--warning); }
+#undo-log-all-btn:hover { background: var(--warning-hover); }
+#refresh-btn, #sync-check-btn { background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border-input); }
+#refresh-btn:hover, #sync-check-btn:hover { background: var(--bg-header); }
 
 /* Log All status bar */
 .log-all-status { font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-border); }
@@ -185,6 +185,10 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: var(--bg-input-w
 select.suggested { border: 2px dashed #e67e22; background: #fef5e7; }
 body.dark select.suggested { border-color: #e67e22; background: #3a2e1a; }
 
+/* --- Auto-suggest badge --- */
+.suggest-badge { display: inline-block; font-size: 10px; color: #e67e22; background: rgba(230,126,34,0.12); padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; letter-spacing: 0.02em; }
+body.dark .suggest-badge { background: rgba(230,126,34,0.2); }
+
 /* --- Unassigned filter checkbox --- */
 .filter-checkbox { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); cursor: pointer; margin-left: 4px; white-space: nowrap; }
 .filter-checkbox input[type="checkbox"] { margin: 0; accent-color: var(--accent); }
@@ -193,3 +197,49 @@ body.dark select.suggested { border-color: #e67e22; background: #3a2e1a; }
 .diff-added td { background: var(--success-bg); color: var(--success-text); }
 .diff-removed td { background: var(--error-bg); color: var(--danger); }
 .diff-changed td:last-child { font-weight: bold; }
+
+/* --- Toast notifications --- */
+#toast-container { position: fixed; bottom: 12px; left: 12px; right: 12px; z-index: 9999; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.toast { padding: 8px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transform: translateY(8px); transition: opacity 0.25s, transform 0.25s; pointer-events: auto; }
+.toast.visible { opacity: 1; transform: translateY(0); }
+.toast-info { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-border); }
+.toast-error { background: var(--error-bg); color: var(--danger); border: 1px solid var(--error-border); }
+.toast-success { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); }
+
+/* --- Loading state --- */
+.loading { text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 13px; }
+.loading::after { content: ''; display: inline-block; width: 12px; height: 12px; margin-left: 8px; border: 2px solid var(--border-input); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Responsive --- */
+@media (max-width: 420px) {
+  .tab { font-size: 13px; padding: 10px 0 8px 0; }
+  .tab-content { padding: 10px 8px 8px 8px; }
+  .filter-bar { gap: 4px; }
+  .filter-bar button { padding: 4px 8px; font-size: 12px; }
+  .filter-bar select { font-size: 12px; min-width: 60px; }
+  .filter-checkbox { font-size: 11px; }
+
+  .summary-table th:first-child,
+  .summary-table td:first-child { width: 32%; }
+  .summary-table th:nth-child(2),
+  .summary-table td:nth-child(2) { width: 12%; }
+  .summary-table th:nth-child(3),
+  .summary-table td:nth-child(3) { width: 38%; }
+  .summary-table th:nth-child(4),
+  .summary-table td:nth-child(4) { width: 18%; }
+
+  th, td { padding: 4px 3px; font-size: 12px; }
+  .everhour-btn, .remove-btn { width: 24px; padding: 3px; font-size: 12px; }
+}
+
+@media (max-width: 340px) {
+  .summary-table th:nth-child(3),
+  .summary-table td:nth-child(3) { display: none; }
+  .summary-table th:first-child,
+  .summary-table td:first-child { width: 50%; }
+  .summary-table th:nth-child(2),
+  .summary-table td:nth-child(2) { width: 20%; }
+  .summary-table th:nth-child(4),
+  .summary-table td:nth-child(4) { width: 30%; }
+}

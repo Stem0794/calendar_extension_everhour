@@ -1,3 +1,12 @@
+// Global error handlers for service worker
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection in background:', event.reason);
+});
+
+self.onerror = (msg, url, line, col, error) => {
+  console.error('Background service worker error:', msg, error);
+};
+
 // Open side panel when extension icon is clicked
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
@@ -78,9 +87,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // Periodic alarm to retry offline queue
-chrome.alarms?.create?.('retryOfflineQueue', { periodInMinutes: 2 });
-chrome.alarms?.onAlarm?.addListener?.((alarm) => {
+chrome.alarms.create('retryOfflineQueue', { periodInMinutes: 2 });
+chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'retryOfflineQueue') {
-    processOfflineQueue();
+    processOfflineQueue().catch(e => console.error('Offline queue retry error:', e));
   }
 });
