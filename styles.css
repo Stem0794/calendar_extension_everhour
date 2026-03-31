@@ -193,10 +193,6 @@ body.dark .suggest-badge { background: rgba(230,126,34,0.2); }
 .filter-checkbox { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); cursor: pointer; margin-left: 4px; white-space: nowrap; }
 .filter-checkbox input[type="checkbox"] { margin: 0; accent-color: var(--accent); }
 
-/* --- Diff view styles --- */
-.diff-added td { background: var(--success-bg); color: var(--success-text); }
-.diff-removed td { background: var(--error-bg); color: var(--danger); }
-.diff-changed td:last-child { font-weight: bold; }
 
 /* --- Toast notifications --- */
 #toast-container { position: fixed; bottom: 12px; left: 12px; right: 12px; z-index: 9999; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
