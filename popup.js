@@ -933,7 +933,7 @@ async function checkEverhourSync() {
   const btn = document.getElementById('sync-check-btn');
   statusEl.style.display = 'block';
   statusEl.className = 'log-all-status';
-  statusEl.textContent = 'Checking sync status...';
+  statusEl.textContent = 'Checking sync status for visible entries...';
   btn.disabled = true;
 
   const { everhourToken = '' } = await storage.get('everhourToken');
@@ -945,19 +945,46 @@ async function checkEverhourSync() {
     return;
   }
 
-  const { everhourEntries = {} } = await storage.get('everhourEntries');
-  const entryIds = Object.values(everhourEntries).flat();
+  // Get events from active Google Calendar tab to know what is "shown"
+  const events = await new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]) { resolve([]); return; }
+      chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', (response) => {
+        if (chrome.runtime.lastError || !Array.isArray(response)) resolve([]);
+        else resolve(response);
+      });
+    });
+  });
 
-  if (!entryIds.length) {
-    statusEl.textContent = 'No logged entries to verify';
+  const { everhourEntries = {} } = await storage.get('everhourEntries');
+  
+  // Group by title to identify weekKeys
+  const grouped = {};
+  for (const ev of events) {
+    if (!ev.title || !ev.duration) continue;
+    if (!grouped[ev.title]) grouped[ev.title] = [];
+    grouped[ev.title].push(ev);
+  }
+
+  const entryIdsToCheck = [];
+  for (const [title, titleEvents] of Object.entries(grouped)) {
+    const weekKey = getWeekKey(title, titleEvents);
+    if (everhourEntries[weekKey]) {
+      entryIdsToCheck.push(...everhourEntries[weekKey]);
+    }
+  }
+
+  if (!entryIdsToCheck.length) {
+    statusEl.textContent = 'No logged entries in current view to verify';
+    statusEl.className = 'log-all-status';
     btn.disabled = false;
     setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
     return;
   }
 
   let verified = 0, missing = 0;
-  // Spot-check up to 5 entries to avoid rate limits
-  const sample = entryIds.slice(0, 5);
+  // Check all visible logged entries (limit to 50 to avoid excessive calls)
+  const sample = entryIdsToCheck.slice(0, 50);
   for (const id of sample) {
     try {
       const res = await fetch(`https://api.everhour.com/time/${id}`, {
@@ -970,9 +997,8 @@ async function checkEverhourSync() {
     }
   }
 
-  const total = entryIds.length;
   if (missing === 0) {
-    statusEl.textContent = `Sync OK: ${verified}/${sample.length} checked entries verified (${total} total)`;
+    statusEl.textContent = `Sync OK: ${verified} visible entries verified`;
     statusEl.className = 'log-all-status success';
   } else {
     statusEl.textContent = `Sync issue: ${missing}/${sample.length} entries not found in Everhour`;
