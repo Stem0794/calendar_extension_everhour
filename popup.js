@@ -136,7 +136,6 @@ async function restoreState() {
   if (tabContent) tabContent.classList.add('active');
   if (activeTab === 'hours') loadProjectHours();
   if (activeTab === 'summary') loadSummary();
-  if (activeTab === 'diff') loadDiffView();
 }
 
 // --- TABS ---
@@ -149,7 +148,6 @@ document.querySelectorAll('.tab').forEach(tab => {
     await storage.set({ activeTab: tab.dataset.tab });
     if (tab.dataset.tab === "hours") loadProjectHours();
     if (tab.dataset.tab === "summary") loadSummary();
-    if (tab.dataset.tab === "diff") loadDiffView();
   };
 });
 
@@ -815,99 +813,6 @@ document.getElementById('hours-filter').onchange = async () => {
   loadProjectHours();
 };
 
-// --- WEEKLY DIFF VIEW (Feature 9) ---
-async function saveWeekSnapshot() {
-  const events = await new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs[0]) { resolve([]); return; }
-      chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', (response) => {
-        resolve(chrome.runtime.lastError || !Array.isArray(response) ? [] : response);
-      });
-    });
-  });
-  if (!events.length) {
-    showToast('No events to snapshot. Open Google Calendar in Week View.', 'error');
-    return;
-  }
-  const map = await getMeetingToProjectMap();
-  const snapshot = {};
-  for (const ev of events) {
-    if (!ev.title || !ev.duration) continue;
-    snapshot[ev.title] = {
-      minutes: (snapshot[ev.title]?.minutes || 0) + ev.duration,
-      project: map[ev.title] || '',
-    };
-  }
-  await storage.set({ weekSnapshot: snapshot, weekSnapshotDate: new Date().toISOString() });
-  await addLog('Saved week snapshot');
-  showToast('Snapshot saved!', 'success');
-  loadDiffView();
-}
-
-async function loadDiffView() {
-  const container = document.getElementById('diff-content');
-  container.innerHTML = '<div class="loading">Loading diff...</div>';
-  const { weekSnapshot, weekSnapshotDate } = await storage.get(['weekSnapshot', 'weekSnapshotDate']);
-  if (!weekSnapshot) {
-    container.innerHTML = '<b>No snapshot saved yet. Click "Save Snapshot" to save the current week as a baseline.</b>';
-    return;
-  }
-
-  const events = await new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs[0]) { resolve([]); return; }
-      chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', (response) => {
-        resolve(chrome.runtime.lastError || !Array.isArray(response) ? [] : response);
-      });
-    });
-  });
-
-  const current = {};
-  for (const ev of events) {
-    if (!ev.title || !ev.duration) continue;
-    current[ev.title] = (current[ev.title] || 0) + ev.duration;
-  }
-
-  const allTitles = new Set([...Object.keys(weekSnapshot), ...Object.keys(current)]);
-  const diffs = [];
-  for (const title of allTitles) {
-    const oldMins = weekSnapshot[title]?.minutes || 0;
-    const newMins = current[title] || 0;
-    if (oldMins !== newMins) {
-      diffs.push({ title, oldMins, newMins, delta: newMins - oldMins });
-    }
-  }
-
-  if (!diffs.length) {
-    container.innerHTML = `<b>No changes since snapshot (${new Date(weekSnapshotDate).toLocaleDateString()}).</b>`;
-    return;
-  }
-
-  const dateLabel = document.createElement('div');
-  dateLabel.style.cssText = 'font-size:12px;color:#888;margin-bottom:8px;';
-  dateLabel.textContent = `Compared to snapshot from ${new Date(weekSnapshotDate).toLocaleDateString()}`;
-  container.appendChild(dateLabel);
-
-  const table = document.createElement('table');
-  table.className = 'summary-table';
-  const header = document.createElement('tr');
-  header.innerHTML = '<th>Meeting</th><th>Previous</th><th>Current</th><th>Change</th>';
-  table.appendChild(header);
-
-  for (const d of diffs.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))) {
-    const tr = document.createElement('tr');
-    const oldH = Math.round((d.oldMins / 60) * 100) / 100;
-    const newH = Math.round((d.newMins / 60) * 100) / 100;
-    const deltaH = Math.round((d.delta / 60) * 100) / 100;
-    const sign = deltaH > 0 ? '+' : '';
-    tr.className = d.oldMins === 0 ? 'diff-added' : d.newMins === 0 ? 'diff-removed' : 'diff-changed';
-    tr.innerHTML = `<td>${d.title}</td><td>${oldH}h</td><td>${newH}h</td><td>${sign}${deltaH}h</td>`;
-    table.appendChild(tr);
-  }
-  container.appendChild(table);
-}
-
-document.getElementById('save-week-snapshot').onclick = saveWeekSnapshot;
 
 // --- KEYBOARD SHORTCUT LISTENER (Feature 10) ---
 chrome.runtime.onMessage.addListener((msg) => {
