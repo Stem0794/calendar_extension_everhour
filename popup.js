@@ -1007,25 +1007,19 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.offlineQueue) showOfflineQueueStatus();
 });
 
-// --- DARK MODE (Feature: CSS toggle) ---
+// --- DARK MODE (apply stored preference) ---
 async function initDarkMode() {
   const { darkMode = false } = await storage.get('darkMode');
   if (darkMode) document.body.classList.add('dark');
-  updateDarkModeIcon(darkMode);
 }
-
-function updateDarkModeIcon(isDark) {
-  const btn = document.getElementById('dark-mode-toggle');
-  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
-}
-
-document.getElementById('dark-mode-toggle').onclick = async () => {
-  const isDark = document.body.classList.toggle('dark');
-  await storage.set({ darkMode: isDark });
-  updateDarkModeIcon(isDark);
-};
-
 initDarkMode();
+
+// Re-apply if changed from Settings page while side panel is open
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.darkMode) {
+    document.body.classList.toggle('dark', changes.darkMode.newValue);
+  }
+});
 
 // Initialize UI with last used state
 restoreState();

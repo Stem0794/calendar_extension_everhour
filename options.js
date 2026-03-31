@@ -415,7 +415,29 @@ async function importSettings() {
 document.getElementById('import-settings').onclick = importSettings;
 
 
+// --- Dark Mode ---
+function updateDarkModeUI(isDark) {
+  const btn = document.getElementById('dark-mode-toggle');
+  const label = document.getElementById('dark-mode-label');
+  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+  if (label) label.textContent = isDark ? 'Dark mode' : 'Light mode';
+}
+
+async function initDarkMode() {
+  const { darkMode = false } = await storage.get('darkMode');
+  if (darkMode) document.body.classList.add('dark');
+  updateDarkModeUI(darkMode);
+}
+
+document.getElementById('dark-mode-toggle').onclick = async () => {
+  const isDark = document.body.classList.toggle('dark');
+  await storage.set({ darkMode: isDark });
+  updateDarkModeUI(isDark);
+  await addLog(isDark ? 'Dark mode enabled' : 'Dark mode disabled');
+};
+
 // Init
+initDarkMode();
 loadEverhourToken();
 renderProjectList();
 loadLogs();

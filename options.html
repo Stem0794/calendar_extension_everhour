@@ -7,21 +7,23 @@
   <style>
     body {
       font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
-      background: #f0f2f5;
+      background: var(--bg-body);
+      color: var(--text-primary);
       margin: 0;
       min-width: 560px;
       min-height: 430px;
       display: flex;
       justify-content: center;
       padding: 20px 0;
+      transition: background 0.25s ease, color 0.25s ease;
     }
     #settings-wrapper {
       width: 100%;
       max-width: 760px;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 8px;
-      border: 1px solid #e1e4ea;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.06);
+      border: 1px solid var(--border-light);
+      box-shadow: 0 3px 6px var(--shadow-card);
       padding: 20px;
     }
     .summary-table select { min-width: 160px; width: 100%; }
@@ -61,6 +63,13 @@
         <button id="import-settings" style="margin-left:6px;margin-top:0;">Import</button>
         <input type="file" id="import-file" accept="application/json" style="margin-left:6px;" />
         <a id="download-link" style="display:none;"></a>
+      </div>
+      <div style="margin-top:24px; padding-top:16px; border-top:1px solid #e1e4ea;">
+        <label style="font-size:13px; font-weight:500;">Appearance</label>
+        <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+          <button id="dark-mode-toggle" class="icon-btn" title="Toggle dark mode">🌙</button>
+          <span id="dark-mode-label" style="font-size:13px; color:#666;">Light mode</span>
+        </div>
       </div>
     </div>
 
