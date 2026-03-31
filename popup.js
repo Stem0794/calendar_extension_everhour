@@ -747,9 +747,10 @@ async function loadProjectHours() {
         const rows = Object.entries(totals)
           .map(([project, mins]) => [project, Math.round((mins / 60) * 100) / 100])
           .sort((a, b) => b[1] - a[1]);
+        const totalHours = rows.reduce((sum, [, h]) => sum + h, 0);
         const table = document.createElement('table');
         const header = document.createElement('tr');
-        header.innerHTML = "<th>Project</th><th>Total Hours (this week)</th>";
+        header.innerHTML = "<th>Project</th><th>Total Hours (this week)</th><th>%</th>";
         table.appendChild(header);
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
@@ -761,6 +762,9 @@ async function loadProjectHours() {
           const hoursCell = document.createElement('td');
           hoursCell.textContent = hours;
           tr.appendChild(hoursCell);
+          const pctCell = document.createElement('td');
+          pctCell.textContent = totalHours > 0 ? Math.round((hours / totalHours) * 100) + '%' : '0%';
+          tr.appendChild(pctCell);
           table.appendChild(tr);
         }
         container.appendChild(table);
@@ -782,6 +786,7 @@ async function loadProjectHours() {
         const rows = Object.entries(totals)
           .map(([project, mins]) => [project, Math.round((mins / 60) * 100) / 100])
           .sort((a, b) => b[1] - a[1]);
+        const totalHoursDay = rows.reduce((sum, [, h]) => sum + h, 0);
         const label = document.createElement('div');
         label.style.margin = "10px 0 6px 0";
         label.style.fontWeight = "bold";
@@ -789,7 +794,7 @@ async function loadProjectHours() {
         container.appendChild(label);
         const table = document.createElement('table');
         const header = document.createElement('tr');
-        header.innerHTML = "<th>Project</th><th>Hours</th>";
+        header.innerHTML = "<th>Project</th><th>Hours</th><th>%</th>";
         table.appendChild(header);
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
@@ -801,6 +806,9 @@ async function loadProjectHours() {
           const hoursCell = document.createElement('td');
           hoursCell.textContent = hours;
           tr.appendChild(hoursCell);
+          const pctCell = document.createElement('td');
+          pctCell.textContent = totalHoursDay > 0 ? Math.round((hours / totalHoursDay) * 100) + '%' : '0%';
+          tr.appendChild(pctCell);
           table.appendChild(tr);
         }
         container.appendChild(table);
