@@ -3,7 +3,7 @@
   "name": "Weekly Calendar Project Tracker",
   "version": "4.0.0",
   "description": "Track, color-code, and export your Google Calendar meetings and project hours by week or day.",
-  "permissions": ["activeTab", "storage", "sidePanel", "notifications"],
+  "permissions": ["activeTab", "storage", "sidePanel", "notifications", "alarms"],
   "commands": {
     "log-all": {
       "suggested_key": { "default": "Alt+Shift+L" },
