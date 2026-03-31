@@ -96,9 +96,11 @@ test('popup summary and hours tabs render data', async () => {
   // Summary tab shows meeting
   await expect(page.getByText('Planning')).toBeVisible({ timeout: 8000 });
 
-  // Hours tab shows project totals
+  // Hours tab shows project totals with percentage
   await page.locator('.tab', { hasText: 'Project Hours' }).click();
   await expect(page.locator('#project-hours-table td', { hasText: 'Project A' }).first()).toBeVisible();
+  await expect(page.locator('#project-hours-table th', { hasText: '%' }).first()).toBeVisible();
+  await expect(page.locator('#project-hours-table td', { hasText: '100%' }).first()).toBeVisible();
 
   await page.screenshot({ path: path.join(screenshotDir, 'popup-summary-hours.png'), fullPage: true });
   await browser.close();
