@@ -154,6 +154,8 @@ function buildDomSkeleton() {
   doc.register(new FakeElement('button', 'import-settings'));
   doc.register(new FakeElement('input', 'import-file'));
   doc.register(new FakeElement('a', 'download-link'));
+  doc.register(new FakeElement('button', 'dark-mode-toggle'));
+  doc.register(new FakeElement('span', 'dark-mode-label'));
   return doc;
 }
 

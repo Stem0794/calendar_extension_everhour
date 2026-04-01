@@ -315,7 +315,11 @@ function setupPopup(events, overrides = {}) {
       local: storageAPI,
       onChanged: { addListener() { } }
     },
-    runtime: { openOptionsPage() { }, lastError: null }
+    runtime: {
+      openOptionsPage() { },
+      lastError: null,
+      onMessage: { addListener() { } }
+    }
   };
   const sb = { console, chrome, document, setTimeout, clearTimeout };
   vm.createContext(sb); vm.runInContext(popupCode, sb);
