@@ -290,6 +290,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
     btn.dataset.entryIds = JSON.stringify(entryIds);
     btn.textContent = '✓';
     btn.disabled = false;
+    btn.closest('tr')?.classList.remove('unlogged');
     if (key) {
       const { everhourEntries = {} } = await storage.get('everhourEntries');
       everhourEntries[key] = entryIds;
@@ -324,6 +325,7 @@ async function removeFromEverhour(addBtn, remBtn) {
   if (!ids.length) {
     addBtn.dataset.sent = 'false';
     addBtn.textContent = '+';
+    addBtn.closest('tr')?.classList.add('unlogged');
     if (weekKey) {
       const { everhourEntries = {} } = await storage.get('everhourEntries');
       delete everhourEntries[weekKey];
@@ -350,6 +352,7 @@ async function removeFromEverhour(addBtn, remBtn) {
     addBtn.dataset.entryIds = '';
     addBtn.textContent = '+';
     addBtn.disabled = false;
+    addBtn.closest('tr')?.classList.add('unlogged');
     remBtn.textContent = '✓';
     setTimeout(() => { remBtn.textContent = '×'; remBtn.disabled = false; }, 3000);
     if (weekKey) {
@@ -653,6 +656,7 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     addBtn.dataset.entryIds = JSON.stringify(storedIds);
     addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
     addBtn.textContent = storedIds.length ? '✓' : '+';
+    if (!storedIds.length && assignedProject && !isSuggested) tr.classList.add('unlogged');
     addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
     remBtn.onclick = () => removeFromEverhour(addBtn, remBtn);
     addTd.appendChild(addBtn);
