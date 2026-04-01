@@ -846,7 +846,7 @@ async function checkEverhourSync() {
   const btn = document.getElementById('sync-check-btn');
   statusEl.style.display = 'block';
   statusEl.className = 'log-all-status';
-  statusEl.textContent = 'Checking sync status for visible entries...';
+  statusEl.textContent = 'Checking sync status...';
   btn.disabled = true;
 
   const { everhourToken = '' } = await storage.get('everhourToken');
@@ -858,7 +858,7 @@ async function checkEverhourSync() {
     return;
   }
 
-  // Get events from active Google Calendar tab to know what is "shown"
+  // Get events from active Google Calendar tab
   const events = await new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs[0]) { resolve([]); return; }
@@ -869,52 +869,61 @@ async function checkEverhourSync() {
     });
   });
 
+  const map = await getMeetingToProjectMap();
   const { everhourEntries = {} } = await storage.get('everhourEntries');
-  
-  // Group by title to identify weekKeys
+
+  // Group events by title — only meetings assigned to a project count
   const grouped = {};
   for (const ev of events) {
-    if (!ev.title || !ev.duration) continue;
+    if (!ev.title || !ev.duration || !map[ev.title]) continue;
     if (!grouped[ev.title]) grouped[ev.title] = [];
     grouped[ev.title].push(ev);
   }
 
-  const entryIdsToCheck = [];
-  for (const [title, titleEvents] of Object.entries(grouped)) {
-    const weekKey = getWeekKey(title, titleEvents);
-    if (everhourEntries[weekKey]) {
-      entryIdsToCheck.push(...everhourEntries[weekKey]);
-    }
-  }
+  const total = Object.keys(grouped).length;
 
-  if (!entryIdsToCheck.length) {
-    statusEl.textContent = 'No logged entries in current view to verify';
+  if (total === 0) {
+    statusEl.textContent = 'No assigned meetings in current view';
     statusEl.className = 'log-all-status';
     btn.disabled = false;
     setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
     return;
   }
 
-  let verified = 0, missing = 0;
-  // Check all visible logged entries (limit to 50 to avoid excessive calls)
-  const sample = entryIdsToCheck.slice(0, 50);
-  for (const id of sample) {
+  // Count how many meetings have been logged locally and collect their entry IDs
+  let loggedCount = 0;
+  const entryIdsToVerify = [];
+  for (const [title, titleEvents] of Object.entries(grouped)) {
+    const weekKey = getWeekKey(title, titleEvents);
+    const ids = everhourEntries[weekKey] || [];
+    if (ids.length) {
+      loggedCount++;
+      entryIdsToVerify.push(...ids);
+    }
+  }
+
+  // Verify logged entries still exist in Everhour via API
+  let apiMissing = 0;
+  for (const id of entryIdsToVerify) {
     try {
       const res = await fetch(`https://api.everhour.com/time/${id}`, {
         headers: { 'X-Api-Key': everhourToken }
       });
-      if (res.ok) verified++;
-      else missing++;
+      if (!res.ok) apiMissing++;
     } catch {
-      missing++;
+      apiMissing++;
     }
   }
 
-  if (missing === 0) {
-    statusEl.textContent = `Sync OK: ${verified} visible entries verified`;
+  const notSent = total - loggedCount;
+  if (notSent === 0 && apiMissing === 0) {
+    statusEl.textContent = `Sync OK: ${loggedCount}/${total} entries logged`;
     statusEl.className = 'log-all-status success';
+  } else if (notSent > 0) {
+    statusEl.textContent = `${loggedCount}/${total} entries logged — ${notSent} not yet sent`;
+    statusEl.className = 'log-all-status error';
   } else {
-    statusEl.textContent = `Sync issue: ${missing}/${sample.length} entries not found in Everhour`;
+    statusEl.textContent = `${loggedCount}/${total} entries logged — ${apiMissing} missing in Everhour`;
     statusEl.className = 'log-all-status error';
   }
   btn.disabled = false;

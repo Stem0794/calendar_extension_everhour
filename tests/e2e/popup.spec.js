@@ -240,6 +240,86 @@ test('log all button shows error toast when no Everhour token is set', async () 
 });
 
 // ---------------------------------------------------------------------------
+// Sync check
+// ---------------------------------------------------------------------------
+
+test('sync check shows no-token error when token is missing', async () => {
+  const events = [
+    { title: 'Standup', duration: 30, date: '2023-09-25', dayOfWeek: 1 },
+  ];
+  const projects = [{ name: 'Project A', color: '#ff0000' }];
+  const meetingProjectMap = { Standup: 'Project A' };
+
+  const { browser, page } = await openPopup(events, projects, meetingProjectMap);
+
+  await expect(page.locator('#meeting-list td', { hasText: 'Standup' }).first()).toBeVisible({ timeout: 8000 });
+  await page.click('#sync-check-btn');
+
+  await expect(page.locator('#sync-check-status')).toContainText('Set Everhour token in Settings first', { timeout: 5000 });
+  await expect(page.locator('#sync-check-status')).toHaveClass(/error/);
+
+  await browser.close();
+});
+
+test('sync check shows X/Y logged count without making API calls when none logged', async () => {
+  const events = [
+    { title: 'Standup',  duration: 30,  date: '2023-09-25', dayOfWeek: 1 },
+    { title: 'Planning', duration: 120, date: '2023-09-25', dayOfWeek: 1 },
+  ];
+  const projects = [{ name: 'Project A', color: '#ff0000' }];
+  const meetingProjectMap = { Standup: 'Project A', Planning: 'Project A' };
+  // everhourToken set but nothing logged yet (everhourEntries empty)
+
+  const { browser, page } = await openPopup(events, projects, meetingProjectMap, { everhourToken: 'tok-123' });
+
+  await expect(page.locator('#meeting-list td', { hasText: 'Standup' }).first()).toBeVisible({ timeout: 8000 });
+
+  // Intercept Everhour API — should not be called since nothing is logged
+  let apiCalled = false;
+  await page.route('**/api.everhour.com/**', () => { apiCalled = true; });
+
+  await page.click('#sync-check-btn');
+
+  // 0 of 2 meetings logged → shows error state
+  await expect(page.locator('#sync-check-status')).toContainText('0/2 entries logged', { timeout: 5000 });
+  await expect(page.locator('#sync-check-status')).toContainText('not yet sent');
+  expect(apiCalled).toBe(false);
+
+  await browser.close();
+});
+
+test('sync check shows correct X/Y when all meetings logged and verified', async () => {
+  const events = [
+    { title: 'Standup',  duration: 30,  date: '2023-09-25', dayOfWeek: 1 },
+    { title: 'Planning', duration: 120, date: '2023-09-25', dayOfWeek: 1 },
+  ];
+  const projects = [{ name: 'Project A', color: '#ff0000' }];
+  const meetingProjectMap = { Standup: 'Project A', Planning: 'Project A' };
+  // Both meetings already logged — weekKey format: "Title|YYYY-MM-DD" (Monday of the week)
+  const everhourEntries = {
+    'Standup|2023-09-25':  ['entry-1'],
+    'Planning|2023-09-25': ['entry-2'],
+  };
+
+  const { browser, page } = await openPopup(events, projects, meetingProjectMap, {
+    everhourToken: 'tok-123',
+    everhourEntries
+  });
+
+  await expect(page.locator('#meeting-list td', { hasText: 'Standup' }).first()).toBeVisible({ timeout: 8000 });
+
+  // Stub Everhour API to return 200 for all entry IDs
+  await page.route('**/api.everhour.com/time/**', route => route.fulfill({ status: 200, body: '{}' }));
+
+  await page.click('#sync-check-btn');
+
+  await expect(page.locator('#sync-check-status')).toContainText('Sync OK: 2/2 entries logged', { timeout: 5000 });
+  await expect(page.locator('#sync-check-status')).toHaveClass(/success/);
+
+  await browser.close();
+});
+
+// ---------------------------------------------------------------------------
 // Dark mode
 // ---------------------------------------------------------------------------
 
