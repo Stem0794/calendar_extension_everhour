@@ -285,6 +285,10 @@ test('sync check shows X/Y logged count without making API calls when none logge
   await expect(page.locator('#sync-check-status')).toContainText('not yet sent');
   expect(apiCalled).toBe(false);
 
+  // Both meeting rows should be highlighted with the unlogged class
+  await expect(page.locator('#meeting-list tr[data-meeting-title="Standup"]')).toHaveClass(/unlogged/);
+  await expect(page.locator('#meeting-list tr[data-meeting-title="Planning"]')).toHaveClass(/unlogged/);
+
   await browser.close();
 });
 

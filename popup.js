@@ -653,6 +653,7 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     addBtn.dataset.entryIds = JSON.stringify(storedIds);
     addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
     addBtn.textContent = storedIds.length ? '✓' : '+';
+    tr.dataset.meetingTitle = title;
     addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
     remBtn.onclick = () => removeFromEverhour(addBtn, remBtn);
     addTd.appendChild(addBtn);
@@ -892,6 +893,7 @@ async function checkEverhourSync() {
 
   // Count how many meetings have been logged locally and collect their entry IDs
   let loggedCount = 0;
+  const missingTitles = new Set();
   const entryIdsToVerify = [];
   for (const [title, titleEvents] of Object.entries(grouped)) {
     const weekKey = getWeekKey(title, titleEvents);
@@ -899,6 +901,8 @@ async function checkEverhourSync() {
     if (ids.length) {
       loggedCount++;
       entryIdsToVerify.push(...ids);
+    } else {
+      missingTitles.add(title);
     }
   }
 
@@ -913,6 +917,14 @@ async function checkEverhourSync() {
     } catch {
       apiMissing++;
     }
+  }
+
+  // Clear previous sync highlights, then mark missing rows in the summary table
+  document.querySelectorAll('#meeting-list tr.unlogged').forEach(r => r.classList.remove('unlogged'));
+  if (missingTitles.size > 0) {
+    document.querySelectorAll('#meeting-list tr[data-meeting-title]').forEach(r => {
+      if (missingTitles.has(r.dataset.meetingTitle)) r.classList.add('unlogged');
+    });
   }
 
   const notSent = total - loggedCount;
