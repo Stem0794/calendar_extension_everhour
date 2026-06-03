@@ -371,36 +371,55 @@ async function runTaskSearch() {
   const query = document.getElementById('task-search-input').value.trim();
   const results = document.getElementById('task-search-results');
   if (!query) return;
-  results.innerHTML = '<span style="color:#888;">Searching…</span>';
+  results.innerHTML = '<span style="color:#888;">Fetching projects…</span>';
 
   try {
-    // Fetch all projects first
-    const projRes = await fetch('https://api.everhour.com/projects?limit=100', {
-      headers: { 'X-Api-Key': everhourToken }
-    });
-    if (!projRes.ok) throw new Error(`Projects fetch failed (${projRes.status})`);
-    const projects = await projRes.json();
+    // Fetch ALL projects (paginate if needed)
+    let allProjects = [];
+    let page = 1;
+    while (true) {
+      const projRes = await fetch(`https://api.everhour.com/projects?limit=100&page=${page}`, {
+        headers: { 'X-Api-Key': everhourToken }
+      });
+      if (!projRes.ok) throw new Error(`Projects fetch failed (${projRes.status})`);
+      const batch = await projRes.json();
+      if (!Array.isArray(batch) || !batch.length) break;
+      allProjects = allProjects.concat(batch);
+      if (batch.length < 100) break;
+      page++;
+    }
 
-    // Search tasks within each project in parallel (up to first 10 projects to avoid rate limits)
+    results.innerHTML = `<span style="color:#888;">Searching tasks across ${allProjects.length} projects…</span>`;
+
     const queryLower = query.toLowerCase();
-    const taskPromises = projects.slice(0, 15).map(async proj => {
-      try {
-        const tRes = await fetch(`https://api.everhour.com/projects/${proj.id}/tasks?limit=200`, {
-          headers: { 'X-Api-Key': everhourToken }
-        });
-        if (!tRes.ok) return [];
-        const tasks = await tRes.json();
-        return (Array.isArray(tasks) ? tasks : [])
-          .filter(t => t.name && t.name.toLowerCase().includes(queryLower))
-          .map(t => ({ ...t, projectName: proj.name }));
-      } catch { return []; }
-    });
 
-    const taskGroups = await Promise.all(taskPromises);
-    const matches = taskGroups.flat();
+    // Batch project-task fetches to avoid hammering the API (5 at a time)
+    const matches = [];
+    for (let i = 0; i < allProjects.length; i += 5) {
+      const batch = allProjects.slice(i, i + 5);
+      const batchResults = await Promise.all(batch.map(async proj => {
+        try {
+          const tRes = await fetch(`https://api.everhour.com/projects/${encodeURIComponent(proj.id)}/tasks?limit=500`, {
+            headers: { 'X-Api-Key': everhourToken }
+          });
+          if (!tRes.ok) return [];
+          const tasks = await tRes.json();
+          return (Array.isArray(tasks) ? tasks : [])
+            .filter(t => t.name && t.name.toLowerCase().includes(queryLower))
+            .map(t => ({
+              ...t,
+              // Preserve the full task ID including any integration prefix (li:, gh:, etc.)
+              id: t.id,
+              projectName: proj.name,
+              projectId: proj.id
+            }));
+        } catch { return []; }
+      }));
+      matches.push(...batchResults.flat());
+    }
 
     if (!matches.length) {
-      results.innerHTML = '<span style="color:#888;">No matching tasks found.</span>';
+      results.innerHTML = `<span style="color:#888;">No matching tasks found across ${allProjects.length} projects.</span>`;
       return;
     }
 
@@ -408,7 +427,7 @@ async function runTaskSearch() {
     matches.forEach(task => {
       const row = document.createElement('div');
       row.style.cssText = 'padding:7px 8px;cursor:pointer;border-radius:4px;border-bottom:1px solid var(--border-light);';
-      row.innerHTML = `<span style="font-weight:500;">${escapeHtml(task.name)}</span><br><span style="font-size:11px;color:#888;">${escapeHtml(task.projectName)} · ID: ${escapeHtml(String(task.id))}</span>`;
+      row.innerHTML = `<span style="font-weight:500;">${escapeHtml(task.name)}</span><br><span style="font-size:11px;color:#888;">${escapeHtml(task.projectName)} · ID: <code>${escapeHtml(String(task.id))}</code></span>`;
       row.onmouseenter = () => row.style.background = 'var(--bg-hover, #f0f4ff)';
       row.onmouseleave = () => row.style.background = '';
       row.onclick = () => {
@@ -416,7 +435,7 @@ async function runTaskSearch() {
           const el = document.getElementById(taskSearchTargetInput);
           if (el) el.value = task.id;
         }
-        document.getElementById('task-search-overlay').style.display = 'none';
+        closeTaskSearch();
       };
       results.appendChild(row);
     });
@@ -424,23 +443,32 @@ async function runTaskSearch() {
     results.innerHTML = `<span style="color:#c00;">Error: ${escapeHtml(e.message)}</span>`;
   }
 }
-
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-document.getElementById('search-task-new').onclick = () => openTaskSearch('new-project-task');
-document.getElementById('task-search-close').onclick = () => {
-  document.getElementById('task-search-overlay').style.display = 'none';
-};
-document.getElementById('task-search-go').onclick = runTaskSearch;
-document.getElementById('task-search-input').addEventListener('keydown', e => {
+function closeTaskSearch() {
+  const overlay = document.getElementById('task-search-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+const searchTaskNewBtn = document.getElementById('search-task-new');
+if (searchTaskNewBtn) searchTaskNewBtn.onclick = () => openTaskSearch('new-project-task');
+
+const taskSearchCloseBtn = document.getElementById('task-search-close');
+if (taskSearchCloseBtn) taskSearchCloseBtn.onclick = closeTaskSearch;
+
+const taskSearchGoBtn = document.getElementById('task-search-go');
+if (taskSearchGoBtn) taskSearchGoBtn.onclick = runTaskSearch;
+
+const taskSearchInput = document.getElementById('task-search-input');
+if (taskSearchInput) taskSearchInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') runTaskSearch();
 });
-document.getElementById('task-search-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('task-search-overlay')) {
-    document.getElementById('task-search-overlay').style.display = 'none';
-  }
+
+const taskSearchOverlay = document.getElementById('task-search-overlay');
+if (taskSearchOverlay) taskSearchOverlay.addEventListener('click', e => {
+  if (e.target === taskSearchOverlay) closeTaskSearch();
 });
 
 // Add new project

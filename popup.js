@@ -158,6 +158,22 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
+// Mirror console output into the activity log.
+// Only active in the live extension (where addLog + chrome.storage exist),
+// so it never leaks into the test harness's shared console object.
+if (typeof addLog === 'function' && typeof chrome !== 'undefined' && chrome.storage) {
+  const _orig = { log: console.log.bind(console), warn: console.warn.bind(console), error: console.error.bind(console) };
+  const serialize = args => args.map(a => {
+    if (a instanceof Error) return a.stack || a.message;
+    if (typeof a === 'object' && a !== null) { try { return JSON.stringify(a); } catch { return String(a); } }
+    return String(a);
+  }).join(' ');
+  const mirror = (level, args) => addLog(`[${level}] ${serialize(args)}`).catch(() => {});
+  console.log   = (...a) => { _orig.log(...a);   mirror('log',   a); };
+  console.warn  = (...a) => { _orig.warn(...a);  mirror('warn',  a); };
+  console.error = (...a) => { _orig.error(...a); mirror('error', a); };
+}
+
 function createProjectSelect(projects, assignedProject) {
   const sel = document.createElement('select');
   const emptyOpt = document.createElement('option');
@@ -424,17 +440,30 @@ async function logAllToEverhour() {
   }
 
   let sent = 0, skipped = 0, errors = 0;
+  const failedTitles = new Set();
 
   for (const [title, titleEvents] of Object.entries(grouped)) {
     const project = map[title];
-    if (!project) { skipped++; continue; }
+    if (!project) {
+      skipped++;
+      await addLog(`Skip "${title}": no project assigned`);
+      continue;
+    }
 
     const taskId = projects.find(p => p.name === project)?.taskId;
-    if (!taskId) { skipped++; continue; }
+    if (!taskId) {
+      skipped++;
+      await addLog(`Skip "${title}": project "${project}" has no task ID configured`);
+      continue;
+    }
 
     const weekKey = getWeekKey(title, titleEvents);
     const storedIds = everhourEntries[weekKey] || [];
-    if (storedIds.length) { skipped++; continue; } // already sent
+    if (storedIds.length) {
+      skipped++;
+      await addLog(`Skip "${title}": already logged this week`);
+      continue;
+    }
 
     statusEl.textContent = `Sending "${title}"...`;
     const entryIds = [];
@@ -465,9 +494,12 @@ async function logAllToEverhour() {
       await addLog(`Sent "${title}" to Everhour`);
     } catch (e) {
       errors++;
-      console.error(`Failed to send "${title}":`, e);
+      failedTitles.add(title);
+      await addLog(`Error "${title}": ${e.message}`);
     }
   }
+
+  await storage.set({ logAllFailedTitles: [...failedTitles] });
 
   await storage.set({ everhourEntries });
 
@@ -490,6 +522,10 @@ async function logAllToEverhour() {
 
   btn.disabled = false;
   btn.textContent = 'Log All';
+
+  // Show/hide "Log missed" button
+  const retryBtn = document.getElementById('retry-missed-btn');
+  if (retryBtn) retryBtn.style.display = errors > 0 ? '' : 'none';
 
   // Refresh the summary view to update button states
   loadSummary();
@@ -556,10 +592,20 @@ async function undoLogAll() {
 
 document.getElementById('undo-log-all-btn').onclick = undoLogAll;
 
+// --- RETRY MISSED ENTRIES ---
+async function retryMissedEntries() {
+  const { logAllFailedTitles = [] } = await storage.get('logAllFailedTitles');
+  if (!logAllFailedTitles.length) return;
+  // Clear failed list then re-run log-all (it will skip already-sent entries naturally)
+  await storage.set({ logAllFailedTitles: [] });
+  await logAllToEverhour();
+}
+document.getElementById('retry-missed-btn').onclick = retryMissedEntries;
+
 // --- SUMMARY TAB ---
 
 // Shared helper: builds a summary table from a set of events
-function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassignedOnly) {
+function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassignedOnly, failedTitles = new Set()) {
   const totals = {};
   const eventsByTitle = {};
   for (const ev of sourceEvents) {
@@ -658,6 +704,16 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
     addBtn.textContent = storedIds.length ? '✓' : '+';
     tr.dataset.meetingTitle = title;
+
+    // Visual state: grey out logged rows, red-outline failed rows
+    if (storedIds.length) {
+      tr.style.opacity = '0.45';
+      tr.style.outline = '';
+    } else if (failedTitles.has(title)) {
+      tr.style.outline = '2px solid #e53935';
+      tr.style.borderRadius = '4px';
+    }
+
     addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
     remBtn.onclick = () => removeFromEverhour(addBtn, remBtn);
     addTd.appendChild(addBtn);
@@ -693,11 +749,16 @@ async function loadSummary() {
       }
       const { projects = [] } = await storage.get('projects');
       const map = await getMeetingToProjectMap();
-      const { everhourEntries = {} } = await storage.get('everhourEntries');
+      const { everhourEntries = {}, logAllFailedTitles = [] } = await storage.get(['everhourEntries', 'logAllFailedTitles']);
+      const failedTitles = new Set(logAllFailedTitles);
       const unassignedOnly = document.getElementById('unassigned-filter')?.checked || false;
 
+      // Show/hide retry button based on stored failed titles
+      const retryBtn = document.getElementById('retry-missed-btn');
+      if (retryBtn) retryBtn.style.display = failedTitles.size > 0 ? '' : 'none';
+
       if (filter === 'week') {
-        container.appendChild(buildSummaryTable(events, projects, map, everhourEntries, unassignedOnly));
+        container.appendChild(buildSummaryTable(events, projects, map, everhourEntries, unassignedOnly, failedTitles));
       } else {
         const dayIdx = JS_DAY_IDX[filter];
         const filteredEvents = events.filter(ev => ev.dayOfWeek === dayIdx);
@@ -710,7 +771,7 @@ async function loadSummary() {
         label.style.fontWeight = "bold";
         label.textContent = DAYS_LABEL[DAYS_EN.indexOf(filter)];
         container.appendChild(label);
-        container.appendChild(buildSummaryTable(filteredEvents, projects, map, everhourEntries, unassignedOnly));
+        container.appendChild(buildSummaryTable(filteredEvents, projects, map, everhourEntries, unassignedOnly, failedTitles));
       }
     });
   });
