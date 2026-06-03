@@ -158,23 +158,21 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
-// Mirror console output into the activity log
-(function () {
+// Mirror console output into the activity log.
+// Only active in the live extension (where addLog + chrome.storage exist),
+// so it never leaks into the test harness's shared console object.
+if (typeof addLog === 'function' && typeof chrome !== 'undefined' && chrome.storage) {
   const _orig = { log: console.log.bind(console), warn: console.warn.bind(console), error: console.error.bind(console) };
-  function serialize(args) {
-    return args.map(a => {
-      if (a instanceof Error) return a.stack || a.message;
-      if (typeof a === 'object' && a !== null) { try { return JSON.stringify(a); } catch { return String(a); } }
-      return String(a);
-    }).join(' ');
-  }
-  function mirror(level, args) {
-    addLog(`[${level}] ${serialize(args)}`).catch(() => {});
-  }
+  const serialize = args => args.map(a => {
+    if (a instanceof Error) return a.stack || a.message;
+    if (typeof a === 'object' && a !== null) { try { return JSON.stringify(a); } catch { return String(a); } }
+    return String(a);
+  }).join(' ');
+  const mirror = (level, args) => addLog(`[${level}] ${serialize(args)}`).catch(() => {});
   console.log   = (...a) => { _orig.log(...a);   mirror('log',   a); };
   console.warn  = (...a) => { _orig.warn(...a);  mirror('warn',  a); };
   console.error = (...a) => { _orig.error(...a); mirror('error', a); };
-})();
+}
 
 function createProjectSelect(projects, assignedProject) {
   const sel = document.createElement('select');

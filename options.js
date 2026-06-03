@@ -435,7 +435,7 @@ async function runTaskSearch() {
           const el = document.getElementById(taskSearchTargetInput);
           if (el) el.value = task.id;
         }
-        document.getElementById('task-search-overlay').style.display = 'none';
+        closeTaskSearch();
       };
       results.appendChild(row);
     });
@@ -447,18 +447,28 @@ function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-document.getElementById('search-task-new').onclick = () => openTaskSearch('new-project-task');
-document.getElementById('task-search-close').onclick = () => {
-  document.getElementById('task-search-overlay').style.display = 'none';
-};
-document.getElementById('task-search-go').onclick = runTaskSearch;
-document.getElementById('task-search-input').addEventListener('keydown', e => {
+function closeTaskSearch() {
+  const overlay = document.getElementById('task-search-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+const searchTaskNewBtn = document.getElementById('search-task-new');
+if (searchTaskNewBtn) searchTaskNewBtn.onclick = () => openTaskSearch('new-project-task');
+
+const taskSearchCloseBtn = document.getElementById('task-search-close');
+if (taskSearchCloseBtn) taskSearchCloseBtn.onclick = closeTaskSearch;
+
+const taskSearchGoBtn = document.getElementById('task-search-go');
+if (taskSearchGoBtn) taskSearchGoBtn.onclick = runTaskSearch;
+
+const taskSearchInput = document.getElementById('task-search-input');
+if (taskSearchInput) taskSearchInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') runTaskSearch();
 });
-document.getElementById('task-search-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('task-search-overlay')) {
-    document.getElementById('task-search-overlay').style.display = 'none';
-  }
+
+const taskSearchOverlay = document.getElementById('task-search-overlay');
+if (taskSearchOverlay) taskSearchOverlay.addEventListener('click', e => {
+  if (e.target === taskSearchOverlay) closeTaskSearch();
 });
 
 // Add new project

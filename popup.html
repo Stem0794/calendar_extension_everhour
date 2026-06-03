@@ -27,29 +27,27 @@
   </div>
 
   <div id="summary" class="tab-content active">
-    <div class="filter-bar">
-      <label for="summary-filter" style="font-size:13px;">Show:</label>
-      <select id="summary-filter" style="margin-left:6px;">
-        <option value="week">Week</option>
-        <option value="monday">Monday</option>
-        <option value="tuesday">Tuesday</option>
-        <option value="wednesday">Wednesday</option>
-        <option value="thursday">Thursday</option>
-        <option value="friday">Friday</option>
-      </select>
-      <label class="filter-checkbox"><input type="checkbox" id="unassigned-filter"> Unassigned only</label>
-      <span class="btn-group">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <label for="summary-filter" class="field-label">Show</label>
+        <select id="summary-filter">
+          <option value="week">Week</option>
+          <option value="monday">Monday</option>
+          <option value="tuesday">Tuesday</option>
+          <option value="wednesday">Wednesday</option>
+          <option value="thursday">Thursday</option>
+          <option value="friday">Friday</option>
+        </select>
+        <label class="filter-checkbox"><input type="checkbox" id="unassigned-filter"> Unassigned only</label>
+        <button id="open-options" class="ghost-btn" title="Open settings">⚙ Settings</button>
+      </div>
+      <div class="toolbar-row">
         <button id="log-all-btn" title="Log all assigned meetings to Everhour">Log All</button>
-        <button id="retry-missed-btn" title="Retry failed entries" style="display:none;">Log missed entries</button>
+        <button id="retry-missed-btn" title="Retry failed entries" style="display:none;">Log missed</button>
         <button id="undo-log-all-btn" title="Undo last Log All" style="display:none;">Undo</button>
-      </span>
-      <span class="btn-group">
-        <button id="refresh-btn" title="Refresh events from calendar">Refresh</button>
-        <button id="sync-check-btn" title="Check Everhour sync status">Sync Check</button>
-      </span>
-      <span class="btn-group" style="margin-left:auto;">
-        <button id="open-options" style="margin-top:0;">Settings</button>
-      </span>
+        <button id="refresh-btn" class="ghost-btn" title="Refresh events from calendar">Refresh</button>
+        <button id="sync-check-btn" class="ghost-btn" title="Check Everhour sync status">Sync Check</button>
+      </div>
     </div>
     <div id="log-all-status" style="display:none;"></div>
     <div id="sync-check-status" style="display:none;"></div>
@@ -58,16 +56,18 @@
   </div>
 
   <div id="hours" class="tab-content">
-    <div class="filter-bar">
-      <label for="hours-filter" style="font-size:13px;">Show:</label>
-      <select id="hours-filter" style="margin-left:6px;">
-        <option value="week">Week</option>
-        <option value="monday">Monday</option>
-        <option value="tuesday">Tuesday</option>
-        <option value="wednesday">Wednesday</option>
-        <option value="thursday">Thursday</option>
-        <option value="friday">Friday</option>
-      </select>
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <label for="hours-filter" class="field-label">Show</label>
+        <select id="hours-filter">
+          <option value="week">Week</option>
+          <option value="monday">Monday</option>
+          <option value="tuesday">Tuesday</option>
+          <option value="wednesday">Wednesday</option>
+          <option value="thursday">Thursday</option>
+          <option value="friday">Friday</option>
+        </select>
+      </div>
     </div>
     <div id="project-hours-table"></div>
   </div>
