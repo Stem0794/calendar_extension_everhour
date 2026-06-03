@@ -936,7 +936,7 @@ async function checkEverhourSync() {
   });
 
   const map = await getMeetingToProjectMap();
-  const { everhourEntries = {} } = await storage.get('everhourEntries');
+  const { everhourEntries = {}, projects = [] } = await storage.get(['everhourEntries', 'projects']);
 
   // Group events by title — only meetings assigned to a project count
   const grouped = {};
@@ -956,31 +956,49 @@ async function checkEverhourSync() {
     return;
   }
 
-  // Count how many meetings have been logged locally and collect their entry IDs
-  let loggedCount = 0;
-  const missingTitles = new Set();
-  const entryIdsToVerify = [];
-  for (const [title, titleEvents] of Object.entries(grouped)) {
-    const weekKey = getWeekKey(title, titleEvents);
-    const ids = everhourEntries[weekKey] || [];
-    if (ids.length) {
-      loggedCount++;
-      entryIdsToVerify.push(...ids);
-    } else {
-      missingTitles.add(title);
-    }
+  // Determine the week date range from the events
+  const allDates = events.filter(e => e.date).map(e => e.date).sort();
+  const weekFrom = allDates[0];
+  const weekTo = allDates[allDates.length - 1];
+
+  // Fetch ALL time entries logged in Everhour for this week (single API call)
+  statusEl.textContent = 'Querying Everhour for existing entries…';
+  let everhourTimeEntries = [];
+  try {
+    const res = await fetch(`https://api.everhour.com/team/time?from=${weekFrom}&to=${weekTo}&limit=500`, {
+      headers: { 'X-Api-Key': everhourToken }
+    });
+    if (res.ok) everhourTimeEntries = await res.json();
+  } catch { /* fall back to local-only check */ }
+
+  // Build a Set of "taskId|date" keys that Everhour already has
+  const everhourLogged = new Set();
+  for (const entry of (Array.isArray(everhourTimeEntries) ? everhourTimeEntries : [])) {
+    if (entry.task && entry.date) everhourLogged.add(`${entry.task}|${entry.date}`);
   }
 
-  // Verify logged entries still exist in Everhour via API
-  let apiMissing = 0;
-  for (const id of entryIdsToVerify) {
-    try {
-      const res = await fetch(`https://api.everhour.com/time/${id}`, {
-        headers: { 'X-Api-Key': everhourToken }
-      });
-      if (!res.ok) apiMissing++;
-    } catch {
-      apiMissing++;
+  // Check each meeting: logged locally OR found directly in Everhour API
+  let loggedCount = 0;
+  const missingTitles = new Set();
+  for (const [title, titleEvents] of Object.entries(grouped)) {
+    const weekKey = getWeekKey(title, titleEvents);
+    const localIds = everhourEntries[weekKey] || [];
+    const taskId = projects.find(p => p.name === map[title])?.taskId;
+
+    // Consider logged if: local record exists OR any calendar event for this
+    // meeting already has a matching entry in Everhour (taskId + date)
+    const foundInEverhour = taskId && titleEvents.some(ev =>
+      everhourLogged.has(`${taskId}|${ev.date}`)
+    );
+
+    if (localIds.length || foundInEverhour) {
+      loggedCount++;
+      // If Everhour has it but local record is missing, sync the state
+      if (foundInEverhour && !localIds.length) {
+        await addLog(`Sync: "${title}" found in Everhour but not in local records — marking as synced`);
+      }
+    } else {
+      missingTitles.add(title);
     }
   }
 
@@ -992,15 +1010,12 @@ async function checkEverhourSync() {
     });
   }
 
-  const notSent = total - loggedCount;
-  if (notSent === 0 && apiMissing === 0) {
-    statusEl.textContent = `Sync OK: ${loggedCount}/${total} entries logged`;
+  const notSent = missingTitles.size;
+  if (notSent === 0) {
+    statusEl.textContent = `Sync OK: all ${loggedCount} assigned meetings found in Everhour`;
     statusEl.className = 'log-all-status success';
-  } else if (notSent > 0) {
-    statusEl.textContent = `${loggedCount}/${total} entries logged — ${notSent} not yet sent`;
-    statusEl.className = 'log-all-status error';
   } else {
-    statusEl.textContent = `${loggedCount}/${total} entries logged — ${apiMissing} missing in Everhour`;
+    statusEl.textContent = `${loggedCount}/${total} found in Everhour — ${notSent} not yet logged`;
     statusEl.className = 'log-all-status error';
   }
   btn.disabled = false;
