@@ -371,36 +371,55 @@ async function runTaskSearch() {
   const query = document.getElementById('task-search-input').value.trim();
   const results = document.getElementById('task-search-results');
   if (!query) return;
-  results.innerHTML = '<span style="color:#888;">Searching…</span>';
+  results.innerHTML = '<span style="color:#888;">Fetching projects…</span>';
 
   try {
-    // Fetch all projects first
-    const projRes = await fetch('https://api.everhour.com/projects?limit=100', {
-      headers: { 'X-Api-Key': everhourToken }
-    });
-    if (!projRes.ok) throw new Error(`Projects fetch failed (${projRes.status})`);
-    const projects = await projRes.json();
+    // Fetch ALL projects (paginate if needed)
+    let allProjects = [];
+    let page = 1;
+    while (true) {
+      const projRes = await fetch(`https://api.everhour.com/projects?limit=100&page=${page}`, {
+        headers: { 'X-Api-Key': everhourToken }
+      });
+      if (!projRes.ok) throw new Error(`Projects fetch failed (${projRes.status})`);
+      const batch = await projRes.json();
+      if (!Array.isArray(batch) || !batch.length) break;
+      allProjects = allProjects.concat(batch);
+      if (batch.length < 100) break;
+      page++;
+    }
 
-    // Search tasks within each project in parallel (up to first 10 projects to avoid rate limits)
+    results.innerHTML = `<span style="color:#888;">Searching tasks across ${allProjects.length} projects…</span>`;
+
     const queryLower = query.toLowerCase();
-    const taskPromises = projects.slice(0, 15).map(async proj => {
-      try {
-        const tRes = await fetch(`https://api.everhour.com/projects/${proj.id}/tasks?limit=200`, {
-          headers: { 'X-Api-Key': everhourToken }
-        });
-        if (!tRes.ok) return [];
-        const tasks = await tRes.json();
-        return (Array.isArray(tasks) ? tasks : [])
-          .filter(t => t.name && t.name.toLowerCase().includes(queryLower))
-          .map(t => ({ ...t, projectName: proj.name }));
-      } catch { return []; }
-    });
 
-    const taskGroups = await Promise.all(taskPromises);
-    const matches = taskGroups.flat();
+    // Batch project-task fetches to avoid hammering the API (5 at a time)
+    const matches = [];
+    for (let i = 0; i < allProjects.length; i += 5) {
+      const batch = allProjects.slice(i, i + 5);
+      const batchResults = await Promise.all(batch.map(async proj => {
+        try {
+          const tRes = await fetch(`https://api.everhour.com/projects/${encodeURIComponent(proj.id)}/tasks?limit=500`, {
+            headers: { 'X-Api-Key': everhourToken }
+          });
+          if (!tRes.ok) return [];
+          const tasks = await tRes.json();
+          return (Array.isArray(tasks) ? tasks : [])
+            .filter(t => t.name && t.name.toLowerCase().includes(queryLower))
+            .map(t => ({
+              ...t,
+              // Preserve the full task ID including any integration prefix (li:, gh:, etc.)
+              id: t.id,
+              projectName: proj.name,
+              projectId: proj.id
+            }));
+        } catch { return []; }
+      }));
+      matches.push(...batchResults.flat());
+    }
 
     if (!matches.length) {
-      results.innerHTML = '<span style="color:#888;">No matching tasks found.</span>';
+      results.innerHTML = `<span style="color:#888;">No matching tasks found across ${allProjects.length} projects.</span>`;
       return;
     }
 
@@ -408,7 +427,7 @@ async function runTaskSearch() {
     matches.forEach(task => {
       const row = document.createElement('div');
       row.style.cssText = 'padding:7px 8px;cursor:pointer;border-radius:4px;border-bottom:1px solid var(--border-light);';
-      row.innerHTML = `<span style="font-weight:500;">${escapeHtml(task.name)}</span><br><span style="font-size:11px;color:#888;">${escapeHtml(task.projectName)} · ID: ${escapeHtml(String(task.id))}</span>`;
+      row.innerHTML = `<span style="font-weight:500;">${escapeHtml(task.name)}</span><br><span style="font-size:11px;color:#888;">${escapeHtml(task.projectName)} · ID: <code>${escapeHtml(String(task.id))}</code></span>`;
       row.onmouseenter = () => row.style.background = 'var(--bg-hover, #f0f4ff)';
       row.onmouseleave = () => row.style.background = '';
       row.onclick = () => {
@@ -424,7 +443,6 @@ async function runTaskSearch() {
     results.innerHTML = `<span style="color:#c00;">Error: ${escapeHtml(e.message)}</span>`;
   }
 }
-
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
