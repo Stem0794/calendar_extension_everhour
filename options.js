@@ -167,10 +167,18 @@ async function renderProjectList() {
       cancelBtn.dataset.idx = idx;
       cancelBtn.textContent = 'Cancel';
 
+      const searchTaskBtn = document.createElement('button');
+      searchTaskBtn.type = 'button';
+      searchTaskBtn.title = 'Search Everhour tasks';
+      searchTaskBtn.textContent = '🔍';
+      searchTaskBtn.style.cssText = 'padding:4px 8px;font-size:13px;';
+      searchTaskBtn.onclick = () => openTaskSearch(`edit-task-${idx}`);
+
       li.appendChild(nameInput);
       li.appendChild(colorInput);
       li.appendChild(keywordInput);
       li.appendChild(taskInput);
+      li.appendChild(searchTaskBtn);
       li.appendChild(groupInput);
       li.appendChild(saveBtn);
       li.appendChild(cancelBtn);
@@ -338,6 +346,102 @@ async function renderProjectList() {
     });
   });
 }
+
+// Everhour task search
+let taskSearchTargetInput = null;
+
+async function openTaskSearch(targetInputId) {
+  const { everhourToken = '' } = await storage.get('everhourToken');
+  if (!everhourToken) {
+    alert('Please save your Everhour API token in the Everhour tab first.');
+    return;
+  }
+  taskSearchTargetInput = targetInputId;
+  const overlay = document.getElementById('task-search-overlay');
+  const input = document.getElementById('task-search-input');
+  const results = document.getElementById('task-search-results');
+  input.value = '';
+  results.innerHTML = '<span style="color:#888;">Enter a task name and click Search.</span>';
+  overlay.style.display = 'block';
+  input.focus();
+}
+
+async function runTaskSearch() {
+  const { everhourToken = '' } = await storage.get('everhourToken');
+  const query = document.getElementById('task-search-input').value.trim();
+  const results = document.getElementById('task-search-results');
+  if (!query) return;
+  results.innerHTML = '<span style="color:#888;">Searching…</span>';
+
+  try {
+    // Fetch all projects first
+    const projRes = await fetch('https://api.everhour.com/projects?limit=100', {
+      headers: { 'X-Api-Key': everhourToken }
+    });
+    if (!projRes.ok) throw new Error(`Projects fetch failed (${projRes.status})`);
+    const projects = await projRes.json();
+
+    // Search tasks within each project in parallel (up to first 10 projects to avoid rate limits)
+    const queryLower = query.toLowerCase();
+    const taskPromises = projects.slice(0, 15).map(async proj => {
+      try {
+        const tRes = await fetch(`https://api.everhour.com/projects/${proj.id}/tasks?limit=200`, {
+          headers: { 'X-Api-Key': everhourToken }
+        });
+        if (!tRes.ok) return [];
+        const tasks = await tRes.json();
+        return (Array.isArray(tasks) ? tasks : [])
+          .filter(t => t.name && t.name.toLowerCase().includes(queryLower))
+          .map(t => ({ ...t, projectName: proj.name }));
+      } catch { return []; }
+    });
+
+    const taskGroups = await Promise.all(taskPromises);
+    const matches = taskGroups.flat();
+
+    if (!matches.length) {
+      results.innerHTML = '<span style="color:#888;">No matching tasks found.</span>';
+      return;
+    }
+
+    results.innerHTML = '';
+    matches.forEach(task => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:7px 8px;cursor:pointer;border-radius:4px;border-bottom:1px solid var(--border-light);';
+      row.innerHTML = `<span style="font-weight:500;">${escapeHtml(task.name)}</span><br><span style="font-size:11px;color:#888;">${escapeHtml(task.projectName)} · ID: ${escapeHtml(String(task.id))}</span>`;
+      row.onmouseenter = () => row.style.background = 'var(--bg-hover, #f0f4ff)';
+      row.onmouseleave = () => row.style.background = '';
+      row.onclick = () => {
+        if (taskSearchTargetInput) {
+          const el = document.getElementById(taskSearchTargetInput);
+          if (el) el.value = task.id;
+        }
+        document.getElementById('task-search-overlay').style.display = 'none';
+      };
+      results.appendChild(row);
+    });
+  } catch (e) {
+    results.innerHTML = `<span style="color:#c00;">Error: ${escapeHtml(e.message)}</span>`;
+  }
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('search-task-new').onclick = () => openTaskSearch('new-project-task');
+document.getElementById('task-search-close').onclick = () => {
+  document.getElementById('task-search-overlay').style.display = 'none';
+};
+document.getElementById('task-search-go').onclick = runTaskSearch;
+document.getElementById('task-search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runTaskSearch();
+});
+document.getElementById('task-search-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('task-search-overlay')) {
+    document.getElementById('task-search-overlay').style.display = 'none';
+  }
+});
 
 // Add new project
 document.getElementById('add-project').onclick = async () => {
