@@ -158,6 +158,24 @@ const storage = {
   remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
 };
 
+// Mirror console output into the activity log
+(function () {
+  const _orig = { log: console.log.bind(console), warn: console.warn.bind(console), error: console.error.bind(console) };
+  function serialize(args) {
+    return args.map(a => {
+      if (a instanceof Error) return a.stack || a.message;
+      if (typeof a === 'object' && a !== null) { try { return JSON.stringify(a); } catch { return String(a); } }
+      return String(a);
+    }).join(' ');
+  }
+  function mirror(level, args) {
+    addLog(`[${level}] ${serialize(args)}`).catch(() => {});
+  }
+  console.log   = (...a) => { _orig.log(...a);   mirror('log',   a); };
+  console.warn  = (...a) => { _orig.warn(...a);  mirror('warn',  a); };
+  console.error = (...a) => { _orig.error(...a); mirror('error', a); };
+})();
+
 function createProjectSelect(projects, assignedProject) {
   const sel = document.createElement('select');
   const emptyOpt = document.createElement('option');
@@ -428,14 +446,26 @@ async function logAllToEverhour() {
 
   for (const [title, titleEvents] of Object.entries(grouped)) {
     const project = map[title];
-    if (!project) { skipped++; continue; }
+    if (!project) {
+      skipped++;
+      await addLog(`Skip "${title}": no project assigned`);
+      continue;
+    }
 
     const taskId = projects.find(p => p.name === project)?.taskId;
-    if (!taskId) { skipped++; continue; }
+    if (!taskId) {
+      skipped++;
+      await addLog(`Skip "${title}": project "${project}" has no task ID configured`);
+      continue;
+    }
 
     const weekKey = getWeekKey(title, titleEvents);
     const storedIds = everhourEntries[weekKey] || [];
-    if (storedIds.length) { skipped++; continue; } // already sent
+    if (storedIds.length) {
+      skipped++;
+      await addLog(`Skip "${title}": already logged this week`);
+      continue;
+    }
 
     statusEl.textContent = `Sending "${title}"...`;
     const entryIds = [];
@@ -467,7 +497,7 @@ async function logAllToEverhour() {
     } catch (e) {
       errors++;
       failedTitles.add(title);
-      console.error(`Failed to send "${title}":`, e);
+      await addLog(`Error "${title}": ${e.message}`);
     }
   }
 
