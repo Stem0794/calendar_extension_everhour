@@ -395,8 +395,8 @@ async function runTaskSearch() {
 
     // Batch project-task fetches to avoid hammering the API (5 at a time)
     const matches = [];
-    for (let i = 0; i < allProjects.length; i += 5) {
-      const batch = allProjects.slice(i, i + 5);
+    for (let i = 0; i < allProjects.length; i += 20) {
+      const batch = allProjects.slice(i, i + 20);
       const batchResults = await Promise.all(batch.map(async proj => {
         try {
           const tRes = await fetch(`https://api.everhour.com/projects/${encodeURIComponent(proj.id)}/tasks?limit=500`, {
@@ -444,7 +444,7 @@ async function runTaskSearch() {
   }
 }
 function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function closeTaskSearch() {
