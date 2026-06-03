@@ -281,7 +281,8 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
         })
       });
       if (!res.ok) {
-        throw new Error('Request failed');
+        const body = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} for task "${taskId}" — ${body || 'no details'}`);
       }
       const data = await res.json().catch(() => null);
       if (data && data.id) entryIds.push(data.id);
@@ -452,7 +453,10 @@ async function logAllToEverhour() {
             comment: ev.comment || ''
           })
         });
-        if (!res.ok) throw new Error('Request failed');
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          throw new Error(`HTTP ${res.status} for task "${taskId}" — ${body || 'no details'}`);
+        }
         const data = await res.json().catch(() => null);
         if (data?.id) entryIds.push(data.id);
       }
