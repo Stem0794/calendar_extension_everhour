@@ -231,6 +231,36 @@ function showToast(message, type = 'info', duration = 3500) {
   }, duration);
 }
 
+// Non-blocking confirmation toast — resolves true (confirm) or false (cancel)
+function confirmToast(message) {
+  return new Promise(resolve => {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-info';
+    toast.style.cssText = 'display:flex;align-items:center;gap:10px;';
+    const msg = document.createElement('span');
+    msg.style.flex = '1';
+    msg.textContent = message;
+    const yes = document.createElement('button');
+    yes.textContent = 'Send';
+    yes.style.cssText = 'padding:3px 10px;font-size:12px;margin:0;';
+    const no = document.createElement('button');
+    no.textContent = 'Cancel';
+    no.style.cssText = 'padding:3px 10px;font-size:12px;margin:0;background:#888;';
+    toast.append(msg, yes, no);
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    const done = val => { toast.classList.remove('visible'); setTimeout(() => toast.remove(), 300); resolve(val); };
+    yes.onclick = () => done(true);
+    no.onclick = () => done(false);
+  });
+}
+
 // --- CHROME NOTIFICATIONS ---
 function showNotification(title, message) {
   if (chrome.notifications) {
@@ -272,7 +302,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
   if (key) {
     const { everhourEntries = {} } = await storage.get('everhourEntries');
     if (everhourEntries[key]?.length) {
-      const proceed = confirm(`"${title}" appears to already be logged this week. Send anyway?`);
+      const proceed = await confirmToast(`"${title}" already logged this week. Send anyway?`);
       if (!proceed) return;
     }
   }
@@ -281,7 +311,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
   btn.textContent = '⌛';
   const entryIds = [];
   try {
-    for (const ev of eventsToSend) {
+    const results = await Promise.all(eventsToSend.map(async ev => {
       const { date, duration, comment = '' } = ev;
       const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
         method: 'POST',
@@ -301,8 +331,9 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
         throw new Error(`HTTP ${res.status} for task "${taskId}" — ${body || 'no details'}`);
       }
       const data = await res.json().catch(() => null);
-      if (data && data.id) entryIds.push(data.id);
-    }
+      return data?.id ?? null;
+    }));
+    entryIds.push(...results.filter(Boolean));
     btn.dataset.sent = 'true';
     btn.dataset.entryIds = JSON.stringify(entryIds);
     btn.textContent = '✓';
@@ -737,6 +768,10 @@ async function loadSummary() {
   const container = document.getElementById('meeting-list');
   container.innerHTML = '<div class="loading">Loading events...</div>';
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    if (!tabs[0]) {
+      container.innerHTML = "<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>";
+      return;
+    }
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
       container.innerHTML = '';
       if (chrome.runtime.lastError) {
@@ -763,7 +798,7 @@ async function loadSummary() {
         const dayIdx = JS_DAY_IDX[filter];
         const filteredEvents = events.filter(ev => ev.dayOfWeek === dayIdx);
         if (!filteredEvents.length) {
-          container.innerHTML = `<b>No meetings for ${DAYS_LABEL[DAYS_EN.indexOf(filter)]}.</b>`;
+          container.innerHTML = `<b>No meetings for ${DAYS_LABEL[DAYS_EN.indexOf(filter)] ?? filter}.</b>`;
           return;
         }
         const label = document.createElement('div');
@@ -790,6 +825,10 @@ async function loadProjectHours() {
   const container = document.getElementById('project-hours-table');
   container.innerHTML = '<div class="loading">Loading project hours...</div>';
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    if (!tabs[0]) {
+      container.innerHTML = "<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>";
+      return;
+    }
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
       container.innerHTML = '';
       if (chrome.runtime.lastError) {
@@ -1036,10 +1075,6 @@ async function showOfflineQueueStatus() {
     statusEl.style.display = 'none';
   }
 }
-
-// Wrap fetch for offline fallback in Everhour calls
-const originalSendToEverhour = sendToEverhour;
-// Note: offline queuing is handled in background.js via message passing
 
 // Check offline queue on load
 showOfflineQueueStatus();
