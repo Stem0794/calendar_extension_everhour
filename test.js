@@ -164,7 +164,15 @@ class Element {
     this.children = [];
     this._innerHTML = '';
     this.value = '';
-    this.textContent = '';
+    this._textContent = '';
+    // Mirror real DOM: getter aggregates from children, setter clears children
+    Object.defineProperty(this, 'textContent', {
+      configurable: true,
+      get: () => this.children.length
+        ? this.children.map(c => c.textContent ?? '').join('')
+        : this._textContent,
+      set: val => { this._textContent = String(val ?? ''); this.children = []; }
+    });
     this.style = {};
     this.dataset = {};
     this.classList = { add() { }, remove() { } };

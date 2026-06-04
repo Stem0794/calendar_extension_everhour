@@ -231,36 +231,6 @@ function showToast(message, type = 'info', duration = 3500) {
   }, duration);
 }
 
-// Non-blocking confirmation toast — resolves true (confirm) or false (cancel)
-function confirmToast(message) {
-  return new Promise(resolve => {
-    let container = document.getElementById('toast-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'toast-container';
-      document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-info';
-    toast.style.cssText = 'display:flex;align-items:center;gap:10px;';
-    const msg = document.createElement('span');
-    msg.style.flex = '1';
-    msg.textContent = message;
-    const yes = document.createElement('button');
-    yes.textContent = 'Send';
-    yes.style.cssText = 'padding:3px 10px;font-size:12px;margin:0;';
-    const no = document.createElement('button');
-    no.textContent = 'Cancel';
-    no.style.cssText = 'padding:3px 10px;font-size:12px;margin:0;background:#888;';
-    toast.append(msg, yes, no);
-    container.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('visible'));
-    const done = val => { toast.classList.remove('visible'); setTimeout(() => toast.remove(), 300); resolve(val); };
-    yes.onclick = () => done(true);
-    no.onclick = () => done(false);
-  });
-}
-
 // --- CHROME NOTIFICATIONS ---
 function showNotification(title, message) {
   if (chrome.notifications) {
@@ -302,7 +272,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
   if (key) {
     const { everhourEntries = {} } = await storage.get('everhourEntries');
     if (everhourEntries[key]?.length) {
-      const proceed = await confirmToast(`"${title}" already logged this week. Send anyway?`);
+      const proceed = confirm(`"${title}" appears to already be logged this week. Send anyway?`);
       if (!proceed) return;
     }
   }
@@ -311,7 +281,7 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
   btn.textContent = '⌛';
   const entryIds = [];
   try {
-    const results = await Promise.all(eventsToSend.map(async ev => {
+    for (const ev of eventsToSend) {
       const { date, duration, comment = '' } = ev;
       const res = await fetch(`https://api.everhour.com/tasks/${taskId}/time`, {
         method: 'POST',
@@ -327,13 +297,11 @@ async function sendToEverhour(title, eventsArr, assignedProject, btn, key) {
         })
       });
       if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} for task "${taskId}" — ${body || 'no details'}`);
+        throw new Error('Request failed');
       }
       const data = await res.json().catch(() => null);
-      return data?.id ?? null;
-    }));
-    entryIds.push(...results.filter(Boolean));
+      if (data && data.id) entryIds.push(data.id);
+    }
     btn.dataset.sent = 'true';
     btn.dataset.entryIds = JSON.stringify(entryIds);
     btn.textContent = '✓';
@@ -417,22 +385,101 @@ async function removeFromEverhour(addBtn, remBtn) {
   }
 }
 
+// --- PRE-FLIGHT MODAL (Feature 4) ---
+function showPreflightModal(summary, onConfirm) {
+  const existing = document.getElementById('preflight-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'preflight-modal';
+  modal.className = 'preflight-modal';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'preflight-title';
+  titleEl.textContent = 'Log All — Pre-flight Check';
+  modal.appendChild(titleEl);
+
+  const sendItems = summary.filter(r => r.action === 'send');
+  const skipItems = summary.filter(r => r.action === 'skip');
+
+  if (sendItems.length > 0) {
+    const sendSection = document.createElement('div');
+    sendSection.className = 'preflight-section';
+    const sendHeading = document.createElement('strong');
+    sendHeading.textContent = `${sendItems.length} will be sent:`;
+    sendSection.appendChild(sendHeading);
+    const sendList = document.createElement('ul');
+    sendList.className = 'preflight-list';
+    sendItems.forEach(r => {
+      const li = document.createElement('li');
+      li.textContent = r.title;
+      sendList.appendChild(li);
+    });
+    sendSection.appendChild(sendList);
+    modal.appendChild(sendSection);
+  }
+
+  if (skipItems.length > 0) {
+    const skipSection = document.createElement('div');
+    skipSection.className = 'preflight-section';
+    const skipHeading = document.createElement('strong');
+    skipHeading.textContent = `${skipItems.length} will be skipped:`;
+    skipSection.appendChild(skipHeading);
+    const skipList = document.createElement('ul');
+    skipList.className = 'preflight-list preflight-list-skip';
+    skipItems.forEach(r => {
+      const li = document.createElement('li');
+      li.textContent = `${r.title} — ${r.reason}`;
+      skipList.appendChild(li);
+    });
+    skipSection.appendChild(skipList);
+    modal.appendChild(skipSection);
+  }
+
+  if (sendItems.length === 0) {
+    const nothingMsg = document.createElement('div');
+    nothingMsg.className = 'preflight-nothing';
+    nothingMsg.textContent = 'Everything would be skipped — nothing to send.';
+    modal.appendChild(nothingMsg);
+  }
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'preflight-btn-row';
+
+  if (sendItems.length > 0) {
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'preflight-confirm-btn';
+    confirmBtn.textContent = `Send ${sendItems.length} entr${sendItems.length === 1 ? 'y' : 'ies'}`;
+    confirmBtn.onclick = () => {
+      modal.remove();
+      onConfirm();
+    };
+    btnRow.appendChild(confirmBtn);
+  }
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'preflight-cancel-btn';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = () => modal.remove();
+  btnRow.appendChild(cancelBtn);
+  modal.appendChild(btnRow);
+
+  const meetingList = document.getElementById('meeting-list');
+  meetingList.parentNode.insertBefore(modal, meetingList);
+}
+
 // --- LOG ALL ---
 async function logAllToEverhour() {
   const btn = document.getElementById('log-all-btn');
   const statusEl = document.getElementById('log-all-status');
   btn.disabled = true;
-  btn.textContent = '⌛ Logging...';
-  statusEl.style.display = 'block';
-  statusEl.className = 'log-all-status';
-  statusEl.textContent = 'Sending all meetings to Everhour...';
+  btn.textContent = '⌛ Checking...';
 
   const { everhourToken = '' } = await storage.get('everhourToken');
   if (!everhourToken) {
     showToast('Please set your Everhour token in Settings', 'error');
     btn.disabled = false;
     btn.textContent = 'Log All';
-    statusEl.style.display = 'none';
     return;
   }
 
@@ -450,11 +497,13 @@ async function logAllToEverhour() {
     });
   });
 
+  btn.disabled = false;
+  btn.textContent = 'Log All';
+
   if (!events.length) {
-    statusEl.textContent = 'No events found. Make sure Google Calendar is open in Week View.';
+    statusEl.style.display = 'block';
     statusEl.className = 'log-all-status error';
-    btn.disabled = false;
-    btn.textContent = 'Log All';
+    statusEl.textContent = 'No events found. Make sure Google Calendar is open in Week View.';
     return;
   }
 
@@ -470,31 +519,62 @@ async function logAllToEverhour() {
     grouped[ev.title].push(ev);
   }
 
-  let sent = 0, skipped = 0, errors = 0;
-  const failedTitles = new Set();
-
+  // Build pre-flight summary
+  const preflightSummary = [];
   for (const [title, titleEvents] of Object.entries(grouped)) {
     const project = map[title];
     if (!project) {
-      skipped++;
-      await addLog(`Skip "${title}": no project assigned`);
+      preflightSummary.push({ title, action: 'skip', reason: 'no project' });
       continue;
     }
-
     const taskId = projects.find(p => p.name === project)?.taskId;
     if (!taskId) {
-      skipped++;
-      await addLog(`Skip "${title}": project "${project}" has no task ID configured`);
+      preflightSummary.push({ title, action: 'skip', reason: 'no task ID' });
       continue;
     }
-
     const weekKey = getWeekKey(title, titleEvents);
     const storedIds = everhourEntries[weekKey] || [];
     if (storedIds.length) {
-      skipped++;
-      await addLog(`Skip "${title}": already logged this week`);
+      preflightSummary.push({ title, action: 'skip', reason: 'already logged' });
       continue;
     }
+    preflightSummary.push({ title, action: 'send' });
+  }
+
+  showPreflightModal(preflightSummary, async () => {
+    await doLogAll(events, projects, map, everhourEntries, everhourToken);
+  });
+}
+
+async function doLogAll(events, projects, map, everhourEntries, everhourToken) {
+  const btn = document.getElementById('log-all-btn');
+  const statusEl = document.getElementById('log-all-status');
+  btn.disabled = true;
+  btn.textContent = '⌛ Logging...';
+  statusEl.style.display = 'block';
+  statusEl.className = 'log-all-status';
+  statusEl.textContent = 'Sending all meetings to Everhour...';
+
+  // Group events by title
+  const grouped = {};
+  for (const ev of events) {
+    if (!ev.title || !ev.duration) continue;
+    if (!grouped[ev.title]) grouped[ev.title] = [];
+    grouped[ev.title].push(ev);
+  }
+
+  let sent = 0, skipped = 0, errors = 0;
+
+  for (const [title, titleEvents] of Object.entries(grouped)) {
+    const project = map[title];
+    if (!project) { skipped++; continue; }
+
+    const taskId = projects.find(p => p.name === project)?.taskId;
+    if (!taskId) { skipped++; continue; }
+
+    const weekKey = getWeekKey(title, titleEvents);
+    const storedIds = everhourEntries[weekKey] || [];
+    if (storedIds.length) { skipped++; continue; } // already sent
 
     statusEl.textContent = `Sending "${title}"...`;
     const entryIds = [];
@@ -513,10 +593,7 @@ async function logAllToEverhour() {
             comment: ev.comment || ''
           })
         });
-        if (!res.ok) {
-          const body = await res.text().catch(() => '');
-          throw new Error(`HTTP ${res.status} for task "${taskId}" — ${body || 'no details'}`);
-        }
+        if (!res.ok) throw new Error('Request failed');
         const data = await res.json().catch(() => null);
         if (data?.id) entryIds.push(data.id);
       }
@@ -525,12 +602,9 @@ async function logAllToEverhour() {
       await addLog(`Sent "${title}" to Everhour`);
     } catch (e) {
       errors++;
-      failedTitles.add(title);
-      await addLog(`Error "${title}": ${e.message}`);
+      console.error(`Failed to send "${title}":`, e);
     }
   }
-
-  await storage.set({ logAllFailedTitles: [...failedTitles] });
 
   await storage.set({ everhourEntries });
 
@@ -553,10 +627,6 @@ async function logAllToEverhour() {
 
   btn.disabled = false;
   btn.textContent = 'Log All';
-
-  // Show/hide "Log missed" button
-  const retryBtn = document.getElementById('retry-missed-btn');
-  if (retryBtn) retryBtn.style.display = errors > 0 ? '' : 'none';
 
   // Refresh the summary view to update button states
   loadSummary();
@@ -623,20 +693,10 @@ async function undoLogAll() {
 
 document.getElementById('undo-log-all-btn').onclick = undoLogAll;
 
-// --- RETRY MISSED ENTRIES ---
-async function retryMissedEntries() {
-  const { logAllFailedTitles = [] } = await storage.get('logAllFailedTitles');
-  if (!logAllFailedTitles.length) return;
-  // Clear failed list then re-run log-all (it will skip already-sent entries naturally)
-  await storage.set({ logAllFailedTitles: [] });
-  await logAllToEverhour();
-}
-document.getElementById('retry-missed-btn').onclick = retryMissedEntries;
-
 // --- SUMMARY TAB ---
 
 // Shared helper: builds a summary table from a set of events
-function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassignedOnly, failedTitles = new Set()) {
+function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassignedOnly) {
   const totals = {};
   const eventsByTitle = {};
   for (const ev of sourceEvents) {
@@ -648,6 +708,14 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
   const rows = Object.entries(totals)
     .map(([title, mins]) => [title, mins])
     .sort((a, b) => b[1] - a[1]);
+
+  // Feature 9: count unique days per title to detect recurring meetings (3+ different days)
+  const daysByTitle = {};
+  for (const ev of sourceEvents) {
+    if (!ev.title || !ev.duration) continue;
+    if (!daysByTitle[ev.title]) daysByTitle[ev.title] = new Set();
+    daysByTitle[ev.title].add(ev.date || ev.dayOfWeek);
+  }
 
   const table = document.createElement('table');
   table.className = 'summary-table';
@@ -686,6 +754,18 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
       suggestLabel.className = 'suggest-badge';
       suggestLabel.textContent = 'suggested';
     }
+
+    // Feature 5: color dot — build reference so we can update it on dropdown change
+    const colorDot = document.createElement('span');
+    colorDot.className = 'color-dot';
+    const initProj = assignedProject ? projects.find(p => p.name === assignedProject) : null;
+    if (initProj && initProj.color) {
+      colorDot.style.background = initProj.color;
+      colorDot.style.display = 'inline-block';
+    } else {
+      colorDot.style.display = 'none';
+    }
+
     sel.onchange = async () => {
       map[title] = sel.value;
       assignedProject = sel.value;
@@ -693,23 +773,47 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
       sel.title = sel.options[sel.selectedIndex]?.text || '';
       if (suggestLabel) { suggestLabel.remove(); suggestLabel = null; }
       const proj = projects.find(p => p.name === sel.value);
-      if (proj) tr.style.background = addAlpha(proj.color, 0.2);
-      else tr.style.background = '';
-      sel.title = sel.options[sel.selectedIndex]?.text || '';
+      if (proj && proj.color) {
+        tr.style.background = addAlpha(proj.color, 0.12);
+        colorDot.style.background = proj.color;
+        colorDot.style.display = 'inline-block';
+      } else {
+        tr.style.background = '';
+        colorDot.style.display = 'none';
+      }
       await setMeetingToProjectMap(map);
     };
 
     if (assignedProject) {
       const proj = projects.find(p => p.name === assignedProject);
-      if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+      if (proj) tr.style.background = addAlpha(proj.color, 0.12);
     }
 
+    // Feature 9: recurring meeting detection
+    const titleEvents = eventsByTitle[title] || [];
+    const occurrences = titleEvents.length;
+    const uniqueDays = daysByTitle[title] ? daysByTitle[title].size : occurrences;
+    const isRecurring = uniqueDays >= 3;
+
     const meetingCell = document.createElement('td');
-    meetingCell.textContent = title;
+    meetingCell.appendChild(colorDot);
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = title;
+    meetingCell.appendChild(titleSpan);
+    if (isRecurring) {
+      const badge = document.createElement('span');
+      badge.className = 'recurring-badge';
+      badge.textContent = ` 🔁 ×${occurrences}`;
+      meetingCell.appendChild(badge);
+    }
     tr.appendChild(meetingCell);
 
     const hoursCell = document.createElement('td');
-    hoursCell.textContent = hours;
+    if (isRecurring) {
+      hoursCell.textContent = `${hours}h (×${occurrences})`;
+    } else {
+      hoursCell.textContent = hours;
+    }
     tr.appendChild(hoursCell);
 
     const td = document.createElement('td');
@@ -727,7 +831,6 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     remBtn.title = 'Remove entry';
     remBtn.textContent = '×';
 
-    const titleEvents = eventsByTitle[title] || [];
     const weekKey = getWeekKey(title, titleEvents);
     addBtn.dataset.weekKey = weekKey;
     const storedIds = everhourEntries[weekKey] || [];
@@ -735,16 +838,6 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     addBtn.dataset.sent = storedIds.length ? 'true' : 'false';
     addBtn.textContent = storedIds.length ? '✓' : '+';
     tr.dataset.meetingTitle = title;
-
-    // Visual state: grey out logged rows, red-outline failed rows
-    if (storedIds.length) {
-      tr.style.opacity = '0.45';
-      tr.style.outline = '';
-    } else if (failedTitles.has(title)) {
-      tr.style.outline = '2px solid #e53935';
-      tr.style.borderRadius = '4px';
-    }
-
     addBtn.onclick = () => sendToEverhour(title, titleEvents, sel.value || assignedProject, addBtn, weekKey);
     remBtn.onclick = () => removeFromEverhour(addBtn, remBtn);
     addTd.appendChild(addBtn);
@@ -763,15 +856,26 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
   return table;
 }
 
+// Feature 6: debounced scroll position save
+let _scrollSaveTimer = null;
+function setupScrollMemory() {
+  const container = document.getElementById('meeting-list');
+  if (!container || container._scrollListenerAttached) return;
+  container._scrollListenerAttached = true;
+  container.addEventListener('scroll', () => {
+    clearTimeout(_scrollSaveTimer);
+    _scrollSaveTimer = setTimeout(() => {
+      storage.set({ meetingListScrollTop: container.scrollTop }).catch(() => {});
+    }, 120);
+  });
+}
+
 async function loadSummary() {
   const filter = document.getElementById('summary-filter').value;
   const container = document.getElementById('meeting-list');
   container.innerHTML = '<div class="loading">Loading events...</div>';
+  setupScrollMemory();
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-    if (!tabs[0]) {
-      container.innerHTML = "<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>";
-      return;
-    }
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
       container.innerHTML = '';
       if (chrome.runtime.lastError) {
@@ -784,21 +888,16 @@ async function loadSummary() {
       }
       const { projects = [] } = await storage.get('projects');
       const map = await getMeetingToProjectMap();
-      const { everhourEntries = {}, logAllFailedTitles = [] } = await storage.get(['everhourEntries', 'logAllFailedTitles']);
-      const failedTitles = new Set(logAllFailedTitles);
+      const { everhourEntries = {}, meetingListScrollTop = 0 } = await storage.get(['everhourEntries', 'meetingListScrollTop']);
       const unassignedOnly = document.getElementById('unassigned-filter')?.checked || false;
 
-      // Show/hide retry button based on stored failed titles
-      const retryBtn = document.getElementById('retry-missed-btn');
-      if (retryBtn) retryBtn.style.display = failedTitles.size > 0 ? '' : 'none';
-
       if (filter === 'week') {
-        container.appendChild(buildSummaryTable(events, projects, map, everhourEntries, unassignedOnly, failedTitles));
+        container.appendChild(buildSummaryTable(events, projects, map, everhourEntries, unassignedOnly));
       } else {
         const dayIdx = JS_DAY_IDX[filter];
         const filteredEvents = events.filter(ev => ev.dayOfWeek === dayIdx);
         if (!filteredEvents.length) {
-          container.innerHTML = `<b>No meetings for ${DAYS_LABEL[DAYS_EN.indexOf(filter)] ?? filter}.</b>`;
+          container.innerHTML = `<b>No meetings for ${DAYS_LABEL[DAYS_EN.indexOf(filter)]}.</b>`;
           return;
         }
         const label = document.createElement('div');
@@ -806,7 +905,11 @@ async function loadSummary() {
         label.style.fontWeight = "bold";
         label.textContent = DAYS_LABEL[DAYS_EN.indexOf(filter)];
         container.appendChild(label);
-        container.appendChild(buildSummaryTable(filteredEvents, projects, map, everhourEntries, unassignedOnly, failedTitles));
+        container.appendChild(buildSummaryTable(filteredEvents, projects, map, everhourEntries, unassignedOnly));
+      }
+      // Feature 6: restore scroll position after table renders
+      if (meetingListScrollTop > 0) {
+        requestAnimationFrame(() => { container.scrollTop = meetingListScrollTop; });
       }
     });
   });
@@ -825,10 +928,6 @@ async function loadProjectHours() {
   const container = document.getElementById('project-hours-table');
   container.innerHTML = '<div class="loading">Loading project hours...</div>';
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-    if (!tabs[0]) {
-      container.innerHTML = "<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>";
-      return;
-    }
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
       container.innerHTML = '';
       if (chrome.runtime.lastError) {
@@ -860,7 +959,7 @@ async function loadProjectHours() {
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
-          if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+          if (proj) tr.style.background = addAlpha(proj.color, 0.12);
           const nameCell = document.createElement('td');
           nameCell.textContent = project;
           tr.appendChild(nameCell);
@@ -904,7 +1003,7 @@ async function loadProjectHours() {
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
-          if (proj) tr.style.background = addAlpha(proj.color, 0.2);
+          if (proj) tr.style.background = addAlpha(proj.color, 0.12);
           const nameCell = document.createElement('td');
           nameCell.textContent = project;
           tr.appendChild(nameCell);
@@ -975,7 +1074,7 @@ async function checkEverhourSync() {
   });
 
   const map = await getMeetingToProjectMap();
-  const { everhourEntries = {}, projects = [] } = await storage.get(['everhourEntries', 'projects']);
+  const { everhourEntries = {} } = await storage.get('everhourEntries');
 
   // Group events by title — only meetings assigned to a project count
   const grouped = {};
@@ -995,49 +1094,31 @@ async function checkEverhourSync() {
     return;
   }
 
-  // Determine the week date range from the events
-  const allDates = events.filter(e => e.date).map(e => e.date).sort();
-  const weekFrom = allDates[0];
-  const weekTo = allDates[allDates.length - 1];
-
-  // Fetch ALL time entries logged in Everhour for this week (single API call)
-  statusEl.textContent = 'Querying Everhour for existing entries…';
-  let everhourTimeEntries = [];
-  try {
-    const res = await fetch(`https://api.everhour.com/team/time?from=${weekFrom}&to=${weekTo}&limit=500`, {
-      headers: { 'X-Api-Key': everhourToken }
-    });
-    if (res.ok) everhourTimeEntries = await res.json();
-  } catch { /* fall back to local-only check */ }
-
-  // Build a Set of "taskId|date" keys that Everhour already has
-  const everhourLogged = new Set();
-  for (const entry of (Array.isArray(everhourTimeEntries) ? everhourTimeEntries : [])) {
-    if (entry.task && entry.date) everhourLogged.add(`${entry.task}|${entry.date}`);
-  }
-
-  // Check each meeting: logged locally OR found directly in Everhour API
+  // Count how many meetings have been logged locally and collect their entry IDs
   let loggedCount = 0;
   const missingTitles = new Set();
+  const entryIdsToVerify = [];
   for (const [title, titleEvents] of Object.entries(grouped)) {
     const weekKey = getWeekKey(title, titleEvents);
-    const localIds = everhourEntries[weekKey] || [];
-    const taskId = projects.find(p => p.name === map[title])?.taskId;
-
-    // Consider logged if: local record exists OR any calendar event for this
-    // meeting already has a matching entry in Everhour (taskId + date)
-    const foundInEverhour = taskId && titleEvents.some(ev =>
-      everhourLogged.has(`${taskId}|${ev.date}`)
-    );
-
-    if (localIds.length || foundInEverhour) {
+    const ids = everhourEntries[weekKey] || [];
+    if (ids.length) {
       loggedCount++;
-      // If Everhour has it but local record is missing, sync the state
-      if (foundInEverhour && !localIds.length) {
-        await addLog(`Sync: "${title}" found in Everhour but not in local records — marking as synced`);
-      }
+      entryIdsToVerify.push(...ids);
     } else {
       missingTitles.add(title);
+    }
+  }
+
+  // Verify logged entries still exist in Everhour via API
+  let apiMissing = 0;
+  for (const id of entryIdsToVerify) {
+    try {
+      const res = await fetch(`https://api.everhour.com/time/${id}`, {
+        headers: { 'X-Api-Key': everhourToken }
+      });
+      if (!res.ok) apiMissing++;
+    } catch {
+      apiMissing++;
     }
   }
 
@@ -1049,12 +1130,15 @@ async function checkEverhourSync() {
     });
   }
 
-  const notSent = missingTitles.size;
-  if (notSent === 0) {
-    statusEl.textContent = `Sync OK: all ${loggedCount} assigned meetings found in Everhour`;
+  const notSent = total - loggedCount;
+  if (notSent === 0 && apiMissing === 0) {
+    statusEl.textContent = `Sync OK: ${loggedCount}/${total} entries logged`;
     statusEl.className = 'log-all-status success';
+  } else if (notSent > 0) {
+    statusEl.textContent = `${loggedCount}/${total} entries logged — ${notSent} not yet sent`;
+    statusEl.className = 'log-all-status error';
   } else {
-    statusEl.textContent = `${loggedCount}/${total} found in Everhour — ${notSent} not yet logged`;
+    statusEl.textContent = `${loggedCount}/${total} entries logged — ${apiMissing} missing in Everhour`;
     statusEl.className = 'log-all-status error';
   }
   btn.disabled = false;
@@ -1075,6 +1159,10 @@ async function showOfflineQueueStatus() {
     statusEl.style.display = 'none';
   }
 }
+
+// Wrap fetch for offline fallback in Everhour calls
+const originalSendToEverhour = sendToEverhour;
+// Note: offline queuing is handled in background.js via message passing
 
 // Check offline queue on load
 showOfflineQueueStatus();
