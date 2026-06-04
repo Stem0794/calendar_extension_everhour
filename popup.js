@@ -755,11 +755,12 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
       suggestLabel.textContent = 'suggested';
     }
 
+    let _rowColor = '';
     const applyRowColor = (color) => {
-      if (color) {
-        tr.style.borderLeft = `3px solid ${color}`;
-      } else {
-        tr.style.borderLeft = '';
+      _rowColor = color || '';
+      if (meetingCell) {
+        meetingCell.style.borderLeft = color ? `3px solid ${color}` : '';
+        meetingCell.style.paddingLeft = color ? '8px' : '';
       }
     };
 
@@ -774,11 +775,6 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
       await setMeetingToProjectMap(map);
     };
 
-    if (assignedProject) {
-      const proj = projects.find(p => p.name === assignedProject);
-      applyRowColor(proj?.color);
-    }
-
     // Feature 9: recurring meeting detection
     const titleEvents = eventsByTitle[title] || [];
     const occurrences = titleEvents.length;
@@ -786,6 +782,13 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     const isRecurring = uniqueDays >= 3;
 
     const meetingCell = document.createElement('td');
+    if (assignedProject) {
+      const proj = projects.find(p => p.name === assignedProject);
+      if (proj?.color) {
+        meetingCell.style.borderLeft = `3px solid ${proj.color}`;
+        meetingCell.style.paddingLeft = '8px';
+      }
+    }
     const titleSpan = document.createElement('span');
     titleSpan.textContent = title;
     meetingCell.appendChild(titleSpan);
@@ -944,9 +947,9 @@ async function loadProjectHours() {
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
-          if (proj?.color) tr.style.borderLeft = `3px solid ${proj.color}`;
           const nameCell = document.createElement('td');
           nameCell.textContent = project;
+          if (proj?.color) { nameCell.style.borderLeft = `3px solid ${proj.color}`; nameCell.style.paddingLeft = '8px'; }
           tr.appendChild(nameCell);
           const hoursCell = document.createElement('td');
           hoursCell.textContent = hours;
@@ -988,9 +991,9 @@ async function loadProjectHours() {
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
-          if (proj?.color) tr.style.borderLeft = `3px solid ${proj.color}`;
           const nameCell = document.createElement('td');
           nameCell.textContent = project;
+          if (proj?.color) { nameCell.style.borderLeft = `3px solid ${proj.color}`; nameCell.style.paddingLeft = '8px'; }
           tr.appendChild(nameCell);
           const hoursCell = document.createElement('td');
           hoursCell.textContent = hours;
