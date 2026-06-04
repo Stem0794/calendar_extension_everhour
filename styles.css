@@ -112,6 +112,9 @@ th { background: var(--bg-header); color: var(--text-secondary); font-weight: 50
 td { padding: 6px 6px; font-size: 13px; color: var(--text-primary); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 
+/* Project color accent — left border on row */
+.summary-table tr[style*="border-left"] td:first-child { padding-left: 8px; }
+
 /* Total row */
 .total-row { background: var(--total-row-bg); }
 .total-row td { border-top: 2px solid var(--border-light); }
@@ -148,7 +151,6 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: var(--bg-input-w
 .footer { font-size: 11px; color: var(--text-dim); text-align: right; margin: 18px 10px 4px 0; letter-spacing: 0.03em; }
 .filter-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .btn-group { display: inline-flex; gap: 3px; align-items: center; flex-shrink: 0; }
-.color-dot { display:inline-block; width:13px; height:13px; border-radius:50%; margin-right:6px; border: 1px solid var(--border-light); vertical-align:middle; }
 .keyword-input { width:110px; margin-left: 4px;}
 .rename-input { width:95px; margin-right: 4px;}
 .task-input { width:90px; margin-left: 4px; }
@@ -185,8 +187,8 @@ input[type="text"] { padding: 7px 12px; width: 60%; background: var(--bg-input-w
 .log-all-status.error { background: var(--error-bg); color: var(--danger); border-color: var(--error-border); }
 
 /* --- Auto-suggest indicator --- */
-select.suggested { border: 2px dashed #e67e22; background: #fef5e7; }
-body.dark select.suggested { border-color: #e67e22; background: #3a2e1a; }
+select.suggested { border: 1px dashed #e67e22; }
+body.dark select.suggested { border-color: #e67e22; }
 
 /* --- Auto-suggest badge --- */
 .suggest-badge { display: inline-block; font-size: 10px; color: #e67e22; background: rgba(230,126,34,0.12); padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; letter-spacing: 0.02em; }
@@ -272,10 +274,17 @@ body.dark .suggest-badge { background: rgba(230,126,34,0.2); }
 
 /* --- Recurring meeting badge (Feature 9) --- */
 .recurring-badge {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-left: 4px;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--bg-header);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 0 5px;
+  margin-left: 5px;
   vertical-align: middle;
+  letter-spacing: 0.02em;
 }
 
 /* --- Responsive --- */

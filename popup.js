@@ -755,16 +755,13 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
       suggestLabel.textContent = 'suggested';
     }
 
-    // Feature 5: color dot — build reference so we can update it on dropdown change
-    const colorDot = document.createElement('span');
-    colorDot.className = 'color-dot';
-    const initProj = assignedProject ? projects.find(p => p.name === assignedProject) : null;
-    if (initProj && initProj.color) {
-      colorDot.style.background = initProj.color;
-      colorDot.style.display = 'inline-block';
-    } else {
-      colorDot.style.display = 'none';
-    }
+    const applyRowColor = (color) => {
+      if (color) {
+        tr.style.borderLeft = `3px solid ${color}`;
+      } else {
+        tr.style.borderLeft = '';
+      }
+    };
 
     sel.onchange = async () => {
       map[title] = sel.value;
@@ -773,20 +770,13 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
       sel.title = sel.options[sel.selectedIndex]?.text || '';
       if (suggestLabel) { suggestLabel.remove(); suggestLabel = null; }
       const proj = projects.find(p => p.name === sel.value);
-      if (proj && proj.color) {
-        tr.style.background = addAlpha(proj.color, 0.12);
-        colorDot.style.background = proj.color;
-        colorDot.style.display = 'inline-block';
-      } else {
-        tr.style.background = '';
-        colorDot.style.display = 'none';
-      }
+      applyRowColor(proj?.color);
       await setMeetingToProjectMap(map);
     };
 
     if (assignedProject) {
       const proj = projects.find(p => p.name === assignedProject);
-      if (proj) tr.style.background = addAlpha(proj.color, 0.12);
+      applyRowColor(proj?.color);
     }
 
     // Feature 9: recurring meeting detection
@@ -796,24 +786,19 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     const isRecurring = uniqueDays >= 3;
 
     const meetingCell = document.createElement('td');
-    meetingCell.appendChild(colorDot);
     const titleSpan = document.createElement('span');
     titleSpan.textContent = title;
     meetingCell.appendChild(titleSpan);
     if (isRecurring) {
       const badge = document.createElement('span');
       badge.className = 'recurring-badge';
-      badge.textContent = ` 🔁 ×${occurrences}`;
+      badge.textContent = `×${occurrences}`;
       meetingCell.appendChild(badge);
     }
     tr.appendChild(meetingCell);
 
     const hoursCell = document.createElement('td');
-    if (isRecurring) {
-      hoursCell.textContent = `${hours}h (×${occurrences})`;
-    } else {
-      hoursCell.textContent = hours;
-    }
+    hoursCell.textContent = hours;
     tr.appendChild(hoursCell);
 
     const td = document.createElement('td');
@@ -959,7 +944,7 @@ async function loadProjectHours() {
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
-          if (proj) tr.style.background = addAlpha(proj.color, 0.12);
+          if (proj?.color) tr.style.borderLeft = `3px solid ${proj.color}`;
           const nameCell = document.createElement('td');
           nameCell.textContent = project;
           tr.appendChild(nameCell);
@@ -1003,7 +988,7 @@ async function loadProjectHours() {
         for (let [project, hours] of rows) {
           const tr = document.createElement('tr');
           const proj = projects.find(p => p.name === project);
-          if (proj) tr.style.background = addAlpha(proj.color, 0.12);
+          if (proj?.color) tr.style.borderLeft = `3px solid ${proj.color}`;
           const nameCell = document.createElement('td');
           nameCell.textContent = project;
           tr.appendChild(nameCell);
