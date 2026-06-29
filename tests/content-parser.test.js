@@ -4,9 +4,14 @@ const vm = require('vm');
 const contentCode = fs.readFileSync(require.resolve('../content.js'), 'utf8');
 
 function parseFromTexts(texts) {
-  const chips = texts.map(entry => {
-    const { text, ariaLabel = '', attributes = {}, dataset = {}, style = {} } =
-      typeof entry === 'string' ? { text: entry } : entry;
+  const chips = texts.map((entry) => {
+    const {
+      text,
+      ariaLabel = '',
+      attributes = {},
+      dataset = {},
+      style = {}
+    } = typeof entry === 'string' ? { text: entry } : entry;
     const attrMap = { 'aria-label': ariaLabel, ...attributes };
     return {
       dataset,
@@ -51,9 +56,7 @@ describe('content.js parseEventsFromWeekView', () => {
   });
 
   test('parses French overnight meeting', () => {
-    const events = parseFromTexts([
-      'lundi 2 octobre 2023 de 22h00 à 1h00 Projet Nuit'
-    ]);
+    const events = parseFromTexts(['lundi 2 octobre 2023 de 22h00 à 1h00 Projet Nuit']);
     expect(events).toHaveLength(1);
     expect(events[0].title).toBe('Projet Nuit');
     expect(events[0].duration).toBe(180);

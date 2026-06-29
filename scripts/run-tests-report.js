@@ -83,7 +83,10 @@ if (e2eRun.status !== 0) {
 
 // Screenshots (if any)
 if (fs.existsSync(screenshotDir)) {
-  const shots = fs.readdirSync(screenshotDir).filter(f => f.endsWith('.png')).sort();
+  const shots = fs
+    .readdirSync(screenshotDir)
+    .filter((f) => f.endsWith('.png'))
+    .sort();
   if (shots.length) {
     doc.addPage();
     doc.fontSize(14).text('Playwright Screenshots', { underline: true });

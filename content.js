@@ -1,8 +1,7 @@
 function isDeclinedEventChip(chip, text) {
   const lowerText = (text || '').toLowerCase();
-  const ariaLabel = typeof chip?.getAttribute === 'function'
-    ? (chip.getAttribute('aria-label') || '')
-    : '';
+  const ariaLabel =
+    typeof chip?.getAttribute === 'function' ? chip.getAttribute('aria-label') || '' : '';
   const combinedText = `${lowerText} ${ariaLabel.toLowerCase()}`;
   const statusAttr = (
     chip?.dataset?.responseStatus ||
@@ -22,7 +21,7 @@ function isDeclinedEventChip(chip, text) {
     'rechazado',
     'no asistir'
   ];
-  if (declineKeywords.some(k => combinedText.includes(k) || statusAttr.includes(k))) return true;
+  if (declineKeywords.some((k) => combinedText.includes(k) || statusAttr.includes(k))) return true;
   const textDecoration = (
     chip?.style?.textDecoration ||
     chip?.style?.textDecorationLine ||
@@ -35,24 +34,53 @@ function parseEventsFromWeekView() {
   const chips = Array.from(document.querySelectorAll('[data-eventchip]'));
   const parsed = [];
   const months = [
-    "january", "february", "march", "april", "may", "june", "july",
-    "august", "september", "october", "november", "december",
-    "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
-    "août", "septembre", "octobre", "novembre", "décembre",
-    "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
-    "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    'january',
+    'february',
+    'march',
+    'april',
+    'may',
+    'june',
+    'july',
+    'august',
+    'september',
+    'october',
+    'november',
+    'december',
+    'janvier',
+    'février',
+    'mars',
+    'avril',
+    'mai',
+    'juin',
+    'juillet',
+    'août',
+    'septembre',
+    'octobre',
+    'novembre',
+    'décembre',
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre'
   ];
-  const monthOnlyRegex = new RegExp(
-    `^(?:${months.join('|')})(?:\\s+\\d{4})?$`,
-    'i'
-  );
+  const monthOnlyRegex = new RegExp(`^(?:${months.join('|')})(?:\\s+\\d{4})?$`, 'i');
 
-  chips.forEach(chip => {
+  chips.forEach((chip) => {
     const info = chip.querySelector('.XuJrye');
     if (!info) return;
     const text = info.textContent.trim();
     if (isDeclinedEventChip(chip, text)) return;
-    const match = text.match(/(?:from|de)?\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?)\s*(?:à|a|to|[-–])\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i);
+    const match = text.match(
+      /(?:from|de)?\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?)\s*(?:à|a|to|[-–])\s*(\d{1,2}(?:(?::|\s*h\s*)\d{2})?\s*(?:[ap]m)?),?\s*(.+)/i
+    );
     if (!match) return;
     const [, start, end, rawTitle] = match;
 
@@ -94,7 +122,10 @@ function parseEventsFromWeekView() {
         dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
       }
     }
-    let cleanTitle = rawTitle.replace(/\s*•.*$/, '').split('\n')[0].trim();
+    let cleanTitle = rawTitle
+      .replace(/\s*•.*$/, '')
+      .split('\n')[0]
+      .trim();
     const commaIdx = cleanTitle.indexOf(',');
     if (commaIdx !== -1) {
       cleanTitle = cleanTitle.slice(0, commaIdx).trim();
@@ -113,9 +144,13 @@ function parseEventsFromWeekView() {
       lowerTitle.includes('déjeuner') ||
       lowerTitle.includes('break') ||
       lowerTitle.includes('pause')
-    ) return;
+    )
+      return;
     function toMinutes(str) {
-      const m = str.trim().toLowerCase().match(/(\d{1,2})(?:(?:\:|\s*h\s*)(\d{2}))?\s*(am|pm)?/);
+      const m = str
+        .trim()
+        .toLowerCase()
+        .match(/(\d{1,2})(?:(?:\:|\s*h\s*)(\d{2}))?\s*(am|pm)?/);
       if (!m) return 0;
       let h = +m[1];
       const mins = m[2] ? +m[2] : 0;
@@ -130,7 +165,8 @@ function parseEventsFromWeekView() {
     let duration = toMinutes(end) - startMinutes;
     if (duration < 0) duration += 24 * 60; // handle overnight meetings
     const startTime =
-      String(Math.floor(startMinutes / 60)).padStart(2, '0') + ':' +
+      String(Math.floor(startMinutes / 60)).padStart(2, '0') +
+      ':' +
       String(startMinutes % 60).padStart(2, '0');
     parsed.push({
       title: cleanTitle,

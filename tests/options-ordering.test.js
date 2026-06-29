@@ -257,7 +257,12 @@ describe('options.js project ordering', () => {
     const dragStart = { type: 'dragstart', dataTransfer };
     dragItem.dispatchEvent(dragStart);
 
-    const dropEvent = { type: 'drop', dataTransfer, preventDefault: () => { }, defaultPrevented: false };
+    const dropEvent = {
+      type: 'drop',
+      dataTransfer,
+      preventDefault: () => {},
+      defaultPrevented: false
+    };
     dropEvent.preventDefault = () => {
       dropEvent.defaultPrevented = true;
     };
@@ -274,7 +279,7 @@ describe('options.js project ordering', () => {
       { name: 'Alpha', group: 'Team', color: '#111' },
       { name: 'Beta', group: 'Team', color: '#222' }
     ];
-    const meetingProjectMap = { 'Weekly Sync': 'Alpha', 'Other': 'Beta' };
+    const meetingProjectMap = { 'Weekly Sync': 'Alpha', Other: 'Beta' };
     loadOptionsWithData({ projects: initialProjects, logs: [], meetingProjectMap });
     await nextTick();
 
@@ -294,8 +299,14 @@ describe('options.js project ordering', () => {
     await nextTick();
 
     const projects = global.chrome.storage.local._data.projects;
-    expect(projects[0]).toMatchObject({ name: 'Alpha Renamed', color: '#abcdef', group: 'NewGroup' });
-    expect(global.chrome.storage.local._data.meetingProjectMap['Weekly Sync']).toBe('Alpha Renamed');
+    expect(projects[0]).toMatchObject({
+      name: 'Alpha Renamed',
+      color: '#abcdef',
+      group: 'NewGroup'
+    });
+    expect(global.chrome.storage.local._data.meetingProjectMap['Weekly Sync']).toBe(
+      'Alpha Renamed'
+    );
   });
 
   test('delete removes project and meeting map entry', async () => {
@@ -303,7 +314,7 @@ describe('options.js project ordering', () => {
       { name: 'Alpha', group: '', color: '#111' },
       { name: 'Beta', group: '', color: '#222' }
     ];
-    const meetingProjectMap = { 'Weekly Sync': 'Alpha', 'Other': 'Beta' };
+    const meetingProjectMap = { 'Weekly Sync': 'Alpha', Other: 'Beta' };
     loadOptionsWithData({ projects: initialProjects, logs: [], meetingProjectMap });
     await nextTick();
 

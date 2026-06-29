@@ -98,7 +98,9 @@ describe('Options page flows', () => {
     await page.locator('.delete-btn').last().click();
     await expect(page.getByText('Beta')).not.toBeVisible();
 
-    const storedNames = await page.evaluate(() => window.chrome.storage.local._data.projects.map((p) => p.name));
+    const storedNames = await page.evaluate(() =>
+      window.chrome.storage.local._data.projects.map((p) => p.name)
+    );
     expect(storedNames).toEqual(['Alpha Renamed']);
 
     await page.screenshot({ path: path.join(screenshotDir, 'options-page.png'), fullPage: true });

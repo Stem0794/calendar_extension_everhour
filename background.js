@@ -50,13 +50,13 @@ async function processOfflineQueue() {
       const res = await fetch(item.url, {
         method: item.method,
         headers: item.headers,
-        body: item.body ? JSON.stringify(item.body) : undefined,
+        body: item.body ? JSON.stringify(item.body) : undefined
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // Success — notify popup
       chrome.runtime.sendMessage({
         type: 'offline-retry-success',
-        title: item.title || 'Unknown',
+        title: item.title || 'Unknown'
       });
     } catch (e) {
       item.retries = (item.retries || 0) + 1;
@@ -66,7 +66,7 @@ async function processOfflineQueue() {
         // Give up after max retries — notify
         chrome.runtime.sendMessage({
           type: 'offline-retry-failed',
-          title: item.title || 'Unknown',
+          title: item.title || 'Unknown'
         });
       }
     }
@@ -90,6 +90,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.alarms.create('retryOfflineQueue', { periodInMinutes: 2 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'retryOfflineQueue') {
-    processOfflineQueue().catch(e => console.error('Offline queue retry error:', e));
+    processOfflineQueue().catch((e) => console.error('Offline queue retry error:', e));
   }
 });

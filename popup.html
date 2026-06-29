@@ -1,79 +1,90 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Weekly Calendar Project Tracker</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    body {
-      font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
-      background: var(--bg-body);
-      color: var(--text-primary);
-      margin: 0;
-      min-width: 320px;
-      min-height: 100vh;
-      transition: background 0.25s ease, color 0.25s ease;
-    }
-  </style>
-</head>
-<body>
-  <div id="onboarding-tip" class="onboarding-tip" style="display:none;">
-    Welcome! Switch to Google Calendar in Week View and open the extension.<br>
-    <span style="font-size:11px;color:#3e5678;">(Click to hide this tip forever.)</span>
-  </div>
-  <div id="tabs">
-    <div class="tab active" data-tab="summary">Summary</div>
-    <div class="tab" data-tab="hours">Project Hours</div>
-  </div>
-
-  <div id="summary" class="tab-content active">
-    <div class="toolbar">
-      <div class="toolbar-row">
-        <label for="summary-filter" class="field-label">Show</label>
-        <select id="summary-filter">
-          <option value="week">Week</option>
-          <option value="monday">Monday</option>
-          <option value="tuesday">Tuesday</option>
-          <option value="wednesday">Wednesday</option>
-          <option value="thursday">Thursday</option>
-          <option value="friday">Friday</option>
-        </select>
-        <label class="filter-checkbox"><input type="checkbox" id="unassigned-filter"> Unassigned only</label>
-        <button id="open-options" class="ghost-btn" title="Open settings">⚙ Settings</button>
-      </div>
-      <div class="toolbar-row">
-        <button id="log-all-btn" title="Log all assigned meetings to Everhour">Log All</button>
-        <button id="retry-missed-btn" title="Retry failed entries" style="display:none;">Log missed</button>
-        <button id="undo-log-all-btn" title="Undo last Log All" style="display:none;">Undo</button>
-        <button id="refresh-btn" class="ghost-btn" title="Refresh events from calendar">Refresh</button>
-        <button id="sync-check-btn" class="ghost-btn" title="Check Everhour sync status">Sync Check</button>
-      </div>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Weekly Calendar Project Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body {
+        font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
+        background: var(--bg-body);
+        color: var(--text-primary);
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        transition:
+          background 0.25s ease,
+          color 0.25s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="onboarding-tip" class="onboarding-tip" style="display: none">
+      Welcome! Switch to Google Calendar in Week View and open the extension.<br />
+      <span style="font-size: 11px; color: #3e5678">(Click to hide this tip forever.)</span>
     </div>
-    <div id="log-all-status" style="display:none;"></div>
-    <div id="sync-check-status" style="display:none;"></div>
-    <div id="offline-queue-status" style="display:none;"></div>
-    <div id="meeting-list"></div>
-  </div>
-
-  <div id="hours" class="tab-content">
-    <div class="toolbar">
-      <div class="toolbar-row">
-        <label for="hours-filter" class="field-label">Show</label>
-        <select id="hours-filter">
-          <option value="week">Week</option>
-          <option value="monday">Monday</option>
-          <option value="tuesday">Tuesday</option>
-          <option value="wednesday">Wednesday</option>
-          <option value="thursday">Thursday</option>
-          <option value="friday">Friday</option>
-        </select>
-      </div>
+    <div id="tabs">
+      <div class="tab active" data-tab="summary">Summary</div>
+      <div class="tab" data-tab="hours">Project Hours</div>
     </div>
-    <div id="project-hours-table"></div>
-  </div>
 
+    <div id="summary" class="tab-content active">
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <label for="summary-filter" class="field-label">Show</label>
+          <select id="summary-filter">
+            <option value="week">Week</option>
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+          </select>
+          <label class="filter-checkbox"
+            ><input type="checkbox" id="unassigned-filter" /> Unassigned only</label
+          >
+          <button id="open-options" class="ghost-btn" title="Open settings">⚙ Settings</button>
+        </div>
+        <div class="toolbar-row">
+          <button id="log-all-btn" title="Log all assigned meetings to Everhour">Log All</button>
+          <button id="retry-missed-btn" title="Retry failed entries" style="display: none">
+            Log missed
+          </button>
+          <button id="undo-log-all-btn" title="Undo last Log All" style="display: none">
+            Undo
+          </button>
+          <button id="refresh-btn" class="ghost-btn" title="Refresh events from calendar">
+            Refresh
+          </button>
+          <button id="sync-check-btn" class="ghost-btn" title="Check Everhour sync status">
+            Sync Check
+          </button>
+        </div>
+      </div>
+      <div id="log-all-status" style="display: none"></div>
+      <div id="sync-check-status" style="display: none"></div>
+      <div id="offline-queue-status" style="display: none"></div>
+      <div id="meeting-list"></div>
+    </div>
 
-  <script src="util.js"></script>
-  <script src="popup.js"></script>
-</body>
+    <div id="hours" class="tab-content">
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <label for="hours-filter" class="field-label">Show</label>
+          <select id="hours-filter">
+            <option value="week">Week</option>
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+          </select>
+        </div>
+      </div>
+      <div id="project-hours-table"></div>
+    </div>
+
+    <script src="util.js"></script>
+    <script src="popup.js"></script>
+  </body>
 </html>

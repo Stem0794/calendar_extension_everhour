@@ -29,15 +29,12 @@ async function fetchWeeklyTime() {
   const from = monday.toISOString().slice(0, 10);
   const to = friday.toISOString().slice(0, 10);
 
-  const res = await fetch(
-    `${EVERHOUR_API_BASE}/team/time?from=${from}&to=${to}`,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': EVERHOUR_API_KEY,
-      },
+  const res = await fetch(`${EVERHOUR_API_BASE}/team/time?from=${from}&to=${to}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': EVERHOUR_API_KEY
     }
-  );
+  });
 
   if (!res.ok) {
     throw new Error(`Everhour API error: ${res.status} ${res.statusText}`);
@@ -69,7 +66,7 @@ function formatSummary(entries) {
     '',
     ...lines,
     '',
-    `*Total: ${total.toFixed(2)}h*`,
+    `*Total: ${total.toFixed(2)}h*`
   ].join('\n');
 }
 
@@ -77,7 +74,7 @@ async function postToSlack(text) {
   const res = await fetch(SLACK_WEBHOOK_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text })
   });
 
   if (!res.ok) {

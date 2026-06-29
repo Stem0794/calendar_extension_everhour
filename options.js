@@ -1,8 +1,8 @@
 // Storage helpers
 const storage = {
-  get: keys => new Promise(res => chrome.storage.local.get(keys, res)),
-  set: obj => new Promise(res => chrome.storage.local.set(obj, res)),
-  remove: key => new Promise(res => chrome.storage.local.remove(key, res)),
+  get: (keys) => new Promise((res) => chrome.storage.local.get(keys, res)),
+  set: (obj) => new Promise((res) => chrome.storage.local.set(obj, res)),
+  remove: (key) => new Promise((res) => chrome.storage.local.remove(key, res))
 };
 
 let groupMetaMap = {};
@@ -13,7 +13,7 @@ function refreshGroupOptions(projects) {
   datalist.innerHTML = '';
   groupMetaMap = {};
   const seen = new Set();
-  projects.forEach(p => {
+  projects.forEach((p) => {
     const name = (p.group || '').trim();
     if (!name) return;
     const key = name.toLowerCase();
@@ -37,16 +37,16 @@ function applyGroupColorSelection(groupName) {
 
 const newProjectGroupInput = document.getElementById('new-project-group');
 if (newProjectGroupInput) {
-  ['input', 'change'].forEach(evt => {
-    newProjectGroupInput.addEventListener(evt, e => applyGroupColorSelection(e.target.value));
+  ['input', 'change'].forEach((evt) => {
+    newProjectGroupInput.addEventListener(evt, (e) => applyGroupColorSelection(e.target.value));
   });
 }
 
 // --- TABS ---
-document.querySelectorAll('.tab').forEach(tab => {
+document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById(tab.dataset.tab).classList.add('active');
   });
@@ -63,13 +63,15 @@ async function loadLogs() {
   const list = document.getElementById('log-list');
   if (!list) return;
   list.innerHTML = '';
-  logs.slice().reverse().forEach(l => {
-    const li = document.createElement('li');
-    li.textContent = `[${l.date}] ${l.msg}`;
-    list.appendChild(li);
-  });
+  logs
+    .slice()
+    .reverse()
+    .forEach((l) => {
+      const li = document.createElement('li');
+      li.textContent = `[${l.date}] ${l.msg}`;
+      list.appendChild(li);
+    });
 }
-
 
 // Load and save Everhour token
 async function loadEverhourToken() {
@@ -83,7 +85,9 @@ async function saveEverhourToken() {
   await addLog('Everhour token updated');
   const status = document.getElementById('token-status');
   status.textContent = 'Saved!';
-  setTimeout(() => { status.textContent = ''; }, 1500);
+  setTimeout(() => {
+    status.textContent = '';
+  }, 1500);
   loadLogs();
 }
 
@@ -96,9 +100,9 @@ async function renderProjectList() {
   const list = document.getElementById('project-list');
   list.innerHTML = '';
   const groupBounds = {};
-  projects.forEach((p,i)=>{
+  projects.forEach((p, i) => {
     const g = p.group || '';
-    if(!groupBounds[g]) groupBounds[g] = {first:i,last:i};
+    if (!groupBounds[g]) groupBounds[g] = { first: i, last: i };
     else groupBounds[g].last = i;
   });
   let lastGroup = null;
@@ -229,7 +233,7 @@ async function renderProjectList() {
     list.appendChild(li);
   });
   // Edit project
-  list.querySelectorAll('.edit-btn').forEach(btn => {
+  list.querySelectorAll('.edit-btn').forEach((btn) => {
     btn.onclick = async () => {
       const { projects = [] } = await storage.get('projects');
       projects[+btn.dataset.idx]._edit = true;
@@ -238,7 +242,7 @@ async function renderProjectList() {
     };
   });
   // Cancel edit
-  list.querySelectorAll('.cancel-btn').forEach(btn => {
+  list.querySelectorAll('.cancel-btn').forEach((btn) => {
     btn.onclick = async () => {
       const { projects = [] } = await storage.get('projects');
       projects[+btn.dataset.idx]._edit = false;
@@ -247,12 +251,16 @@ async function renderProjectList() {
     };
   });
   // Save edits
-  list.querySelectorAll('.save-btn').forEach(btn => {
+  list.querySelectorAll('.save-btn').forEach((btn) => {
     btn.onclick = async () => {
       const idx = +btn.dataset.idx;
       const name = document.getElementById(`rename-proj-${idx}`).value.trim();
       const color = document.getElementById(`edit-color-${idx}`).value;
-      const keywords = document.getElementById(`edit-keywords-${idx}`).value.split(',').map(k=>k.trim()).filter(Boolean);
+      const keywords = document
+        .getElementById(`edit-keywords-${idx}`)
+        .value.split(',')
+        .map((k) => k.trim())
+        .filter(Boolean);
       const taskId = document.getElementById(`edit-task-${idx}`).value.trim();
       const group = document.getElementById(`edit-group-${idx}`).value.trim();
       let { projects = [] } = await storage.get('projects');
@@ -261,16 +269,16 @@ async function renderProjectList() {
         return;
       }
       const nameLower = name.toLowerCase();
-      if (projects.some((p,i) => i !== idx && p.name.toLowerCase() === nameLower)) {
+      if (projects.some((p, i) => i !== idx && p.name.toLowerCase() === nameLower)) {
         alert('A project with this name already exists');
         return;
       }
       const oldName = projects[idx].name;
       projects[idx] = { name, color, keywords, taskId, group, _edit: false };
       await storage.set({ projects });
-      let { meetingProjectMap={} } = await storage.get('meetingProjectMap');
+      let { meetingProjectMap = {} } = await storage.get('meetingProjectMap');
       if (name !== oldName) {
-        Object.keys(meetingProjectMap).forEach(t => {
+        Object.keys(meetingProjectMap).forEach((t) => {
           if (meetingProjectMap[t] === oldName) meetingProjectMap[t] = name;
         });
         await storage.set({ meetingProjectMap });
@@ -279,14 +287,14 @@ async function renderProjectList() {
     };
   });
   // Delete project
-  list.querySelectorAll('.delete-btn').forEach(btn => {
+  list.querySelectorAll('.delete-btn').forEach((btn) => {
     btn.onclick = async () => {
       let { projects = [] } = await storage.get('projects');
       const toDelete = projects[+btn.dataset.idx].name;
       projects.splice(+btn.dataset.idx, 1);
       await storage.set({ projects });
-      let { meetingProjectMap={} } = await storage.get('meetingProjectMap');
-      Object.keys(meetingProjectMap).forEach(t => {
+      let { meetingProjectMap = {} } = await storage.get('meetingProjectMap');
+      Object.keys(meetingProjectMap).forEach((t) => {
         if (meetingProjectMap[t] === toDelete) delete meetingProjectMap[t];
       });
       await storage.set({ meetingProjectMap });
@@ -294,26 +302,26 @@ async function renderProjectList() {
     };
   });
   // Move project
-  function move(idx, dir){
-    storage.get('projects').then(({projects=[]})=>{
+  function move(idx, dir) {
+    storage.get('projects').then(({ projects = [] }) => {
       const ni = idx + dir;
-      if(ni<0 || ni>=projects.length) return;
-      const [p] = projects.splice(idx,1);
-      projects.splice(ni,0,p);
-      storage.set({projects}).then(renderProjectList);
+      if (ni < 0 || ni >= projects.length) return;
+      const [p] = projects.splice(idx, 1);
+      projects.splice(ni, 0, p);
+      storage.set({ projects }).then(renderProjectList);
     });
   }
-  list.querySelectorAll('.move-btn.up').forEach(btn=>{
-    btn.onclick = ()=> move(+btn.dataset.idx,-1);
+  list.querySelectorAll('.move-btn.up').forEach((btn) => {
+    btn.onclick = () => move(+btn.dataset.idx, -1);
   });
-  list.querySelectorAll('.move-btn.down').forEach(btn=>{
-    btn.onclick = ()=> move(+btn.dataset.idx,1);
+  list.querySelectorAll('.move-btn.down').forEach((btn) => {
+    btn.onclick = () => move(+btn.dataset.idx, 1);
   });
 
   // Drag & drop reorder
   let dragIdx = null;
-  list.querySelectorAll('.project-item').forEach(item => {
-    item.addEventListener('dragstart', e => {
+  list.querySelectorAll('.project-item').forEach((item) => {
+    item.addEventListener('dragstart', (e) => {
       dragIdx = +item.dataset.idx;
       e.dataTransfer.effectAllowed = 'move';
       item.classList.add('dragging');
@@ -321,17 +329,17 @@ async function renderProjectList() {
     item.addEventListener('dragend', () => {
       dragIdx = null;
       item.classList.remove('dragging');
-      list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      list.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
     });
-    item.addEventListener('dragover', e => {
+    item.addEventListener('dragover', (e) => {
       if (dragIdx === null) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      list.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
       item.classList.add('drag-over');
     });
     item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
-    item.addEventListener('drop', async e => {
+    item.addEventListener('drop', async (e) => {
       if (dragIdx === null) return;
       e.preventDefault();
       const targetIdx = +item.dataset.idx;
@@ -397,24 +405,31 @@ async function runTaskSearch() {
     const matches = [];
     for (let i = 0; i < allProjects.length; i += 20) {
       const batch = allProjects.slice(i, i + 20);
-      const batchResults = await Promise.all(batch.map(async proj => {
-        try {
-          const tRes = await fetch(`https://api.everhour.com/projects/${encodeURIComponent(proj.id)}/tasks?limit=500`, {
-            headers: { 'X-Api-Key': everhourToken }
-          });
-          if (!tRes.ok) return [];
-          const tasks = await tRes.json();
-          return (Array.isArray(tasks) ? tasks : [])
-            .filter(t => t.name && t.name.toLowerCase().includes(queryLower))
-            .map(t => ({
-              ...t,
-              // Preserve the full task ID including any integration prefix (li:, gh:, etc.)
-              id: t.id,
-              projectName: proj.name,
-              projectId: proj.id
-            }));
-        } catch { return []; }
-      }));
+      const batchResults = await Promise.all(
+        batch.map(async (proj) => {
+          try {
+            const tRes = await fetch(
+              `https://api.everhour.com/projects/${encodeURIComponent(proj.id)}/tasks?limit=500`,
+              {
+                headers: { 'X-Api-Key': everhourToken }
+              }
+            );
+            if (!tRes.ok) return [];
+            const tasks = await tRes.json();
+            return (Array.isArray(tasks) ? tasks : [])
+              .filter((t) => t.name && t.name.toLowerCase().includes(queryLower))
+              .map((t) => ({
+                ...t,
+                // Preserve the full task ID including any integration prefix (li:, gh:, etc.)
+                id: t.id,
+                projectName: proj.name,
+                projectId: proj.id
+              }));
+          } catch {
+            return [];
+          }
+        })
+      );
       matches.push(...batchResults.flat());
     }
 
@@ -424,12 +439,13 @@ async function runTaskSearch() {
     }
 
     results.innerHTML = '';
-    matches.forEach(task => {
+    matches.forEach((task) => {
       const row = document.createElement('div');
-      row.style.cssText = 'padding:7px 8px;cursor:pointer;border-radius:4px;border-bottom:1px solid var(--border-light);';
+      row.style.cssText =
+        'padding:7px 8px;cursor:pointer;border-radius:4px;border-bottom:1px solid var(--border-light);';
       row.innerHTML = `<span style="font-weight:500;">${escapeHtml(task.name)}</span><br><span style="font-size:11px;color:#888;">${escapeHtml(task.projectName)} · ID: <code>${escapeHtml(String(task.id))}</code></span>`;
-      row.onmouseenter = () => row.style.background = 'var(--bg-hover, #f0f4ff)';
-      row.onmouseleave = () => row.style.background = '';
+      row.onmouseenter = () => (row.style.background = 'var(--bg-hover, #f0f4ff)');
+      row.onmouseleave = () => (row.style.background = '');
       row.onclick = () => {
         if (taskSearchTargetInput) {
           const el = document.getElementById(taskSearchTargetInput);
@@ -444,7 +460,12 @@ async function runTaskSearch() {
   }
 }
 function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function closeTaskSearch() {
@@ -462,32 +483,38 @@ const taskSearchGoBtn = document.getElementById('task-search-go');
 if (taskSearchGoBtn) taskSearchGoBtn.onclick = runTaskSearch;
 
 const taskSearchInput = document.getElementById('task-search-input');
-if (taskSearchInput) taskSearchInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') runTaskSearch();
-});
+if (taskSearchInput)
+  taskSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runTaskSearch();
+  });
 
 const taskSearchOverlay = document.getElementById('task-search-overlay');
-if (taskSearchOverlay) taskSearchOverlay.addEventListener('click', e => {
-  if (e.target === taskSearchOverlay) closeTaskSearch();
-});
+if (taskSearchOverlay)
+  taskSearchOverlay.addEventListener('click', (e) => {
+    if (e.target === taskSearchOverlay) closeTaskSearch();
+  });
 
 // Add new project
 document.getElementById('add-project').onclick = async () => {
   const inp = document.getElementById('new-project');
   const color = document.getElementById('new-project-color').value || '#42a5f5';
-  const kwds = document.getElementById('new-project-keywords').value.split(',').map(k=>k.trim()).filter(Boolean);
+  const kwds = document
+    .getElementById('new-project-keywords')
+    .value.split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
   const taskId = document.getElementById('new-project-task').value.trim();
   const group = document.getElementById('new-project-group').value.trim();
   const name = inp.value.trim();
   if (!name) return;
   let { projects = [] } = await storage.get('projects');
-  if (!projects.find(p => p.name === name)) {
+  if (!projects.find((p) => p.name === name)) {
     const newProject = { name, color, keywords: kwds, taskId, group };
     const normalizedGroup = group || '';
     const lastInGroup = [...projects]
       .map((p, i) => ({ g: p.group || '', i }))
-      .filter(p => p.g === normalizedGroup)
-      .map(p => p.i)
+      .filter((p) => p.g === normalizedGroup)
+      .map((p) => p.i)
       .pop();
     if (lastInGroup === undefined) {
       projects.push(newProject);
@@ -546,7 +573,6 @@ async function importSettings() {
 }
 document.getElementById('import-settings').onclick = importSettings;
 
-
 // --- Dark Mode ---
 function updateDarkModeUI(isDark) {
   const btn = document.getElementById('dark-mode-toggle');
@@ -573,6 +599,6 @@ initDarkMode();
 loadEverhourToken();
 renderProjectList();
 loadLogs();
-chrome.storage.onChanged.addListener(changes => {
+chrome.storage.onChanged.addListener((changes) => {
   if (changes.logs) loadLogs();
 });
