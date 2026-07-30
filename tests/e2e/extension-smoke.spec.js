@@ -59,16 +59,29 @@ test.describe('Extension smoke suite', () => {
     await page.addInitScript(stubChromeStorage);
     await page.goto(optionsFile);
 
-    await expect(page.getByText('Projects')).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Projects', exact: true })).toBeVisible();
 
     await page.fill('#new-project', 'Smoke Project');
     await page.click('#add-project');
     await expect(page.getByText('Smoke Project')).toBeVisible();
+    await page.screenshot({
+      path: path.join(screenshotDir, 'options-projects.png'),
+      fullPage: true
+    });
 
     await page.locator('.tab', { hasText: 'Everhour' }).click();
     await expect(page.locator('#everhour-token')).toBeVisible();
 
     await page.screenshot({ path: path.join(screenshotDir, 'options-smoke.png'), fullPage: true });
+    await page.setViewportSize({ width: 640, height: 900 });
+    await page.screenshot({
+      path: path.join(screenshotDir, 'options-mobile.png'),
+      fullPage: true
+    });
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(hasHorizontalOverflow).toBe(false);
     await browser.close();
   });
 });

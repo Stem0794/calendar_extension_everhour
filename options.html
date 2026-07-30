@@ -1,94 +1,173 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Extension Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Weekly Calendar Project Tracker Settings</title>
     <link rel="stylesheet" href="styles.css" />
-    <style>
-      body {
-        font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
-        background: var(--bg-body);
-        color: var(--text-primary);
-        margin: 0;
-        min-width: 560px;
-        min-height: 430px;
-        display: flex;
-        justify-content: center;
-        padding: 20px 0;
-        transition:
-          background 0.25s ease,
-          color 0.25s ease;
-      }
-      #settings-wrapper {
-        width: 100%;
-        max-width: 760px;
-        background: var(--bg-card);
-        border-radius: 8px;
-        border: 1px solid var(--border-light);
-        box-shadow: 0 3px 6px var(--shadow-card);
-        padding: 20px;
-      }
-      .summary-table select {
-        min-width: 160px;
-        width: 100%;
-      }
-      .summary-table td:nth-child(3) {
-        width: 30%;
-      }
-      .summary-table button {
-        width: 100%;
-      }
-      #add-project {
-        margin-left: 4px;
-        margin-top: 10px;
-      }
-    </style>
   </head>
-  <body>
-    <div id="settings-wrapper">
-      <div id="tabs">
-        <div class="tab active" data-tab="projects">Projects</div>
-        <div class="tab" data-tab="everhour">Everhour</div>
-        <div class="tab" data-tab="activity">Activity</div>
-      </div>
+  <body class="settings-page">
+    <main id="settings-wrapper" class="settings-shell">
+      <header class="settings-header">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">W</div>
+          <div>
+            <p class="eyebrow">Extension settings</p>
+            <h1>Weekly Calendar Project Tracker</h1>
+            <p>Connect projects, tune matching, and manage your data.</p>
+          </div>
+        </div>
+      </header>
 
-      <div id="projects" class="tab-content active" style="padding: 0">
-        <div class="add-project-row">
-          <input type="text" id="new-project" placeholder="New project name" autocomplete="off" />
-          <input type="color" id="new-project-color" value="#42a5f5" title="Project color" />
-          <input
-            type="text"
-            id="new-project-keywords"
-            placeholder="Keywords, comma-separated"
-            class="keyword-input"
-            autocomplete="off"
-          />
-          <input
-            type="text"
-            id="new-project-task"
-            placeholder="Task ID"
-            class="task-input"
-            autocomplete="off"
-          />
-          <button id="search-task-new" class="icon-btn" type="button" title="Search Everhour tasks">
-            🔍
-          </button>
-          <input
-            type="text"
-            id="new-project-group"
-            placeholder="Group"
-            class="group-input"
-            autocomplete="off"
-            list="group-options"
-          />
-          <datalist id="group-options"></datalist>
-          <button id="add-project">Add</button>
+      <nav id="tabs" class="app-tabs settings-tabs" role="tablist" aria-label="Settings sections">
+        <button
+          class="tab active"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="projects"
+          data-tab="projects"
+        >
+          Projects
+        </button>
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="everhour"
+          data-tab="everhour"
+        >
+          Everhour & data
+        </button>
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="activity"
+          data-tab="activity"
+        >
+          Activity
+        </button>
+      </nav>
+
+      <section id="projects" class="tab-content active settings-panel" role="tabpanel">
+        <div class="settings-section-heading">
+          <div>
+            <p class="eyebrow">Project mapping</p>
+            <h2>Your projects</h2>
+            <p>Projects are checked from top to bottom when matching meeting names.</p>
+          </div>
+          <div class="project-count">
+            <span id="project-count">0</span> <span id="project-count-label">projects</span>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <div class="form-card-heading">
+            <div>
+              <h3>Add a project</h3>
+              <p>Connect a name and keywords to an Everhour task.</p>
+            </div>
+          </div>
+          <div class="add-project-row">
+            <label class="form-field project-name-field">
+              <span>Project name <b>*</b></span>
+              <input
+                type="text"
+                id="new-project"
+                placeholder="e.g. Website redesign"
+                autocomplete="off"
+              />
+            </label>
+            <label class="form-field color-field">
+              <span>Color</span>
+              <input type="color" id="new-project-color" value="#6366f1" title="Project color" />
+            </label>
+            <label class="form-field">
+              <span>Group</span>
+              <input
+                type="text"
+                id="new-project-group"
+                placeholder="e.g. Client work"
+                class="group-input"
+                autocomplete="off"
+                list="group-options"
+              />
+            </label>
+            <datalist id="group-options"></datalist>
+            <label class="form-field">
+              <span>Matching keywords</span>
+              <input
+                type="text"
+                id="new-project-keywords"
+                placeholder="design, review, !internal"
+                class="keyword-input"
+                autocomplete="off"
+              />
+              <small>Comma-separated. Prefix exclusions with !</small>
+            </label>
+            <label class="form-field task-field">
+              <span>Everhour task ID</span>
+              <div class="input-with-action">
+                <input
+                  type="text"
+                  id="new-project-task"
+                  placeholder="Select or paste a task ID"
+                  class="task-input"
+                  autocomplete="off"
+                />
+                <button
+                  id="search-task-new"
+                  class="icon-btn"
+                  type="button"
+                  title="Search Everhour tasks"
+                  aria-label="Search Everhour tasks"
+                >
+                  ⌕
+                </button>
+              </div>
+            </label>
+            <div class="form-submit">
+              <button id="add-project" type="button">Add project</button>
+              <span id="project-form-status" class="form-status" aria-live="polite"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="project-list-heading">
+          <div>
+            <h3>Priority order</h3>
+            <p>Drag projects or use the arrows to change matching priority within a group.</p>
+          </div>
         </div>
         <ul id="project-list"></ul>
-      </div>
+      </section>
 
       <div id="task-search-overlay" class="modal-overlay" style="display: none">
-        <div id="task-search-panel" class="modal-panel">
+        <div
+          id="task-search-panel"
+          class="modal-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="task-search-title"
+        >
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">Everhour</p>
+              <h2 id="task-search-title">Find a task</h2>
+            </div>
+            <button
+              id="task-search-close"
+              class="modal-close-btn"
+              type="button"
+              title="Close"
+              aria-label="Close task search"
+            >
+              ×
+            </button>
+          </div>
           <div class="modal-search-row">
             <input
               type="text"
@@ -97,45 +176,92 @@
               autocomplete="off"
             />
             <button id="task-search-go" type="button">Search</button>
-            <button id="task-search-close" class="modal-close-btn" type="button" title="Close">
-              ✕
+          </div>
+          <div id="task-search-results" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <section id="everhour" class="tab-content settings-panel" role="tabpanel">
+        <div class="settings-section-heading">
+          <div>
+            <p class="eyebrow">Integration</p>
+            <h2>Everhour connection</h2>
+            <p>Your token stays in Chrome local storage and is only sent to Everhour.</p>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-copy">
+            <h3>API token</h3>
+            <p>Required to search tasks, log time, and verify sync status.</p>
+          </div>
+          <div class="token-row">
+            <label class="form-field grow">
+              <span>Token</span>
+              <div class="input-with-action">
+                <input
+                  type="password"
+                  id="everhour-token"
+                  placeholder="Paste your Everhour API token"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button id="toggle-token-visibility" class="icon-btn" type="button">Show</button>
+              </div>
+            </label>
+            <button id="save-token" type="button">Save token</button>
+          </div>
+          <span id="token-status" class="form-status" aria-live="polite"></span>
+        </div>
+
+        <div class="settings-card split-card">
+          <div class="settings-card-copy">
+            <h3>Backup and restore</h3>
+            <p>Export projects and preferences. API tokens are never included.</p>
+          </div>
+          <div class="button-row">
+            <button id="export-settings" class="secondary-action" type="button">
+              Export backup
+            </button>
+            <label class="file-picker secondary-action" for="import-file">Choose JSON</label>
+            <input type="file" id="import-file" accept="application/json,.json" />
+            <button id="import-settings" type="button">Import backup</button>
+            <a id="download-link" style="display: none"></a>
+          </div>
+          <span id="import-status" class="form-status" aria-live="polite"></span>
+        </div>
+
+        <div class="settings-card split-card">
+          <div class="settings-card-copy">
+            <h3>Appearance</h3>
+            <p>Use the same theme in the side panel and settings.</p>
+          </div>
+          <div class="appearance-control">
+            <span id="dark-mode-label">Light mode</span>
+            <button
+              id="dark-mode-toggle"
+              class="theme-toggle"
+              type="button"
+              title="Toggle dark mode"
+            >
+              Enable dark mode
             </button>
           </div>
-          <div id="task-search-results"></div>
         </div>
-      </div>
+      </section>
 
-      <div id="everhour" class="tab-content">
-        <label for="everhour-token" style="font-size: 13px">Everhour API Token:</label>
-        <input
-          type="text"
-          id="everhour-token"
-          placeholder="Token"
-          class="task-input"
-          autocomplete="off"
-        />
-        <button id="save-token">Save</button>
-        <span id="token-status" style="font-size: 12px; margin-left: 6px"></span>
-        <div style="margin-top: 20px">
-          <button id="export-settings" style="margin-top: 0">Export Data</button>
-          <button id="import-settings" style="margin-left: 6px; margin-top: 0">Import</button>
-          <input type="file" id="import-file" accept="application/json" style="margin-left: 6px" />
-          <a id="download-link" style="display: none"></a>
-        </div>
-        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e4ea">
-          <label style="font-size: 13px; font-weight: 500">Appearance</label>
-          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px">
-            <button id="dark-mode-toggle" class="icon-btn" title="Toggle dark mode">🌙</button>
-            <span id="dark-mode-label" style="font-size: 13px; color: #666">Light mode</span>
+      <section id="activity" class="tab-content settings-panel" role="tabpanel">
+        <div class="settings-section-heading">
+          <div>
+            <p class="eyebrow">Local history</p>
+            <h2>Activity log</h2>
+            <p>Recent configuration and logging activity from this browser.</p>
           </div>
         </div>
-      </div>
-
-      <div id="activity" class="tab-content">
-        <h3 style="margin-top: 0">Activity Log</h3>
         <ul id="log-list" class="log-list"></ul>
-      </div>
-    </div>
+      </section>
+    </main>
+
     <script src="util.js"></script>
     <script src="options.js"></script>
   </body>

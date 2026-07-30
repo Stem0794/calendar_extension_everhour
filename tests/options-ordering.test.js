@@ -238,6 +238,18 @@ describe('options.js project ordering', () => {
     expect(names).toEqual(['Alpha', 'Beta', 'Delta', 'Gamma']);
   });
 
+  test('does not add duplicate project names with different casing', async () => {
+    loadOptionsWithData({
+      projects: [{ name: 'Alpha', color: '#111111', keywords: [], taskId: '', group: '' }],
+      logs: []
+    });
+
+    document.getElementById('new-project').value = 'alpha';
+    await document.getElementById('add-project').onclick();
+
+    expect(global.chrome.storage.local._data.projects.map((p) => p.name)).toEqual(['Alpha']);
+  });
+
   test('drag and drop reorders projects and persists the new order', async () => {
     const initialProjects = [
       { name: 'Alpha', group: 'Team', color: '#111' },

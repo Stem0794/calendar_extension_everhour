@@ -19,6 +19,34 @@ module.exports = [
   },
   js.configs.recommended,
   {
+    files: ['background.js'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'script',
+      globals: {
+        ...globals.serviceworker,
+        ...globals.webextensions
+      }
+    },
+    rules: {
+      'no-console': 'off'
+    }
+  },
+  {
+    files: ['slack-bot/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+        fetch: 'readonly'
+      }
+    },
+    rules: {
+      'no-console': 'off'
+    }
+  },
+  {
     files: [
       'scripts/**/*.js',
       'tests/**/*.js',

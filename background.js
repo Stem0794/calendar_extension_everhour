@@ -23,7 +23,6 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 const OFFLINE_QUEUE_KEY = 'offlineQueue';
 const MAX_RETRIES = 5;
-const RETRY_DELAYS = [2000, 4000, 8000, 16000, 32000];
 
 async function getOfflineQueue() {
   const { offlineQueue = [] } = await chrome.storage.local.get(OFFLINE_QUEUE_KEY);
@@ -58,7 +57,7 @@ async function processOfflineQueue() {
         type: 'offline-retry-success',
         title: item.title || 'Unknown'
       });
-    } catch (e) {
+    } catch {
       item.retries = (item.retries || 0) + 1;
       if (item.retries < MAX_RETRIES) {
         remaining.push(item);

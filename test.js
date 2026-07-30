@@ -659,7 +659,7 @@ function expectOptions(selectHtml, values) {
 }
 
 function expectTab(html, tabName) {
-  const re = new RegExp(`<div[^>]*class="[^"]*tab[^"]*"[^>]*data-tab="${tabName}"`, 'i');
+  const re = new RegExp(`<(?:div|button)[^>]*class="[^"]*tab[^"]*"[^>]*data-tab="${tabName}"`, 'i');
   assert.ok(re.test(html), `Missing tab ${tabName}`);
 }
 

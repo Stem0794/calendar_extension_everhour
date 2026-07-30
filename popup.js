@@ -116,7 +116,7 @@ async function maybeShowOnboarding() {
   const { onboarded } = await chrome.storage.local.get('onboarded');
   const tip = document.getElementById('onboarding-tip');
   if (!onboarded) {
-    tip.style.display = 'block';
+    tip.style.display = 'grid';
     tip.onclick = () => {
       tip.style.display = 'none';
       chrome.storage.local.set({ onboarded: true });
@@ -134,27 +134,37 @@ async function restoreState() {
     summaryFilter = 'week',
     hoursFilter = 'week'
   } = await storage.get(['activeTab', 'summaryFilter', 'hoursFilter']);
+  const validFilters = new Set(['week', ...DAYS_EN]);
+  const resolvedTab = ['summary', 'hours'].includes(activeTab) ? activeTab : 'summary';
   const sumSel = document.getElementById('summary-filter');
   const hoursSel = document.getElementById('hours-filter');
-  if (sumSel) sumSel.value = summaryFilter;
-  if (hoursSel) hoursSel.value = hoursFilter;
-  document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+  if (sumSel) sumSel.value = validFilters.has(summaryFilter) ? summaryFilter : 'week';
+  if (hoursSel) hoursSel.value = validFilters.has(hoursFilter) ? hoursFilter : 'week';
+  document.querySelectorAll('.tab').forEach((t) => {
+    t.classList.remove('active');
+    t.setAttribute?.('aria-selected', 'false');
+  });
   document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
   const tabBtn =
-    document.querySelector(`.tab[data-tab="${activeTab}"]`) || document.querySelector('.tab');
-  const tabContent = document.getElementById(activeTab) || document.querySelector('.tab-content');
-  if (tabBtn) tabBtn.classList.add('active');
+    document.querySelector(`.tab[data-tab="${resolvedTab}"]`) || document.querySelector('.tab');
+  const tabContent = document.getElementById(resolvedTab) || document.querySelector('.tab-content');
+  if (tabBtn) {
+    tabBtn.classList.add('active');
+    tabBtn.setAttribute?.('aria-selected', 'true');
+  }
   if (tabContent) tabContent.classList.add('active');
-  if (activeTab === 'hours') loadProjectHours();
-  if (activeTab === 'summary') loadSummary();
+  if (resolvedTab === 'hours') loadProjectHours();
+  if (resolvedTab === 'summary') loadSummary();
 }
 
 // --- TABS ---
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.onclick = async () => {
     document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach((t) => t.setAttribute?.('aria-selected', 'false'));
     document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
     tab.classList.add('active');
+    tab.setAttribute?.('aria-selected', 'true');
     document.getElementById(tab.dataset.tab).classList.add('active');
     await storage.set({ activeTab: tab.dataset.tab });
     if (tab.dataset.tab === 'hours') loadProjectHours();
@@ -436,7 +446,7 @@ function showPreflightModal(summary, onConfirm) {
 
   const titleEl = document.createElement('div');
   titleEl.className = 'preflight-title';
-  titleEl.textContent = 'Log All — Pre-flight Check';
+  titleEl.textContent = 'Review before logging';
   modal.appendChild(titleEl);
 
   const sendItems = summary.filter((r) => r.action === 'send');
@@ -519,7 +529,7 @@ async function logAllToEverhour() {
   if (!everhourToken) {
     showToast('Please set your Everhour token in Settings', 'error');
     btn.disabled = false;
-    btn.textContent = 'Log All';
+    btn.textContent = 'Log assigned';
     return;
   }
 
@@ -541,7 +551,7 @@ async function logAllToEverhour() {
   });
 
   btn.disabled = false;
-  btn.textContent = 'Log All';
+  btn.textContent = 'Log assigned';
 
   if (!events.length) {
     statusEl.style.display = 'block';
@@ -683,7 +693,7 @@ async function doLogAll(events, projects, map, everhourEntries, everhourToken) {
   if (sent > 0) showNotification('Log All Complete', `${sent} meeting(s) logged to Everhour`);
 
   btn.disabled = false;
-  btn.textContent = 'Log All';
+  btn.textContent = 'Log assigned';
 
   // Refresh the summary view to update button states
   loadSummary();
@@ -765,6 +775,31 @@ document.getElementById('undo-log-all-btn').onclick = undoLogAll;
 
 // --- SUMMARY TAB ---
 
+function createEmptyState(title, detail, icon = '○') {
+  const state = document.createElement('div');
+  state.className = 'empty-state';
+  const iconEl = document.createElement('div');
+  iconEl.className = 'empty-state-icon';
+  iconEl.textContent = icon;
+  const titleEl = document.createElement('strong');
+  titleEl.textContent = title;
+  const detailEl = document.createElement('span');
+  detailEl.textContent = detail;
+  state.append(iconEl, titleEl, detailEl);
+  return state;
+}
+
+function updateSummaryMetrics(events = [], map = {}) {
+  const validEvents = events.filter((ev) => ev.title && ev.duration);
+  const titles = new Set(validEvents.map((ev) => ev.title));
+  const assigned = [...titles].filter((title) => map[title]).length;
+  const totalMinutes = validEvents.reduce((sum, ev) => sum + ev.duration, 0);
+  document.getElementById('summary-meeting-count').textContent = titles.size;
+  document.getElementById('summary-hours-total').textContent =
+    Math.round((totalMinutes / 60) * 10) / 10;
+  document.getElementById('summary-assigned-count').textContent = `${assigned}/${titles.size}`;
+}
+
 // Shared helper: builds a summary table from a set of events
 function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassignedOnly) {
   const totals = {};
@@ -793,6 +828,8 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
   header.innerHTML = '<th>Meeting</th><th>Hours</th><th>Project</th><th></th>';
   table.appendChild(header);
 
+  let visibleTotalMins = 0;
+  let visibleRows = 0;
   for (const [title, mins] of rows) {
     const tr = document.createElement('tr');
     const hours = Math.round((mins / 60) * 100) / 100;
@@ -814,6 +851,8 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
 
     // Unassigned filter: skip rows with a confirmed project
     if (unassignedOnly && assignedProject && !isSuggested) continue;
+    visibleTotalMins += mins;
+    visibleRows++;
 
     const sel = createProjectSelect(projects, assignedProject);
     let suggestLabel = null;
@@ -889,9 +928,11 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     const addBtn = document.createElement('button');
     addBtn.className = 'everhour-btn';
     addBtn.title = 'Add to Everhour';
+    addBtn.setAttribute?.('aria-label', `Log ${title} to Everhour`);
     const remBtn = document.createElement('button');
     remBtn.className = 'remove-btn';
     remBtn.title = 'Remove entry';
+    remBtn.setAttribute?.('aria-label', `Remove logged entry for ${title}`);
     remBtn.textContent = '×';
 
     const weekKey = getWeekKey(title, titleEvents);
@@ -912,11 +953,18 @@ function buildSummaryTable(sourceEvents, projects, map, everhourEntries, unassig
     table.appendChild(tr);
   }
 
+  if (!visibleRows) {
+    return createEmptyState(
+      'Nothing to assign',
+      'Every meeting in this view already has a confirmed project.',
+      '✓'
+    );
+  }
+
   // Total hours row
-  const totalMins = rows.reduce((sum, r) => sum + r[1], 0);
   const totalTr = document.createElement('tr');
   totalTr.className = 'total-row';
-  totalTr.innerHTML = `<td><strong>Total</strong></td><td><strong>${Math.round((totalMins / 60) * 100) / 100}</strong></td><td></td><td></td>`;
+  totalTr.innerHTML = `<td><strong>Total</strong></td><td><strong>${Math.round((visibleTotalMins / 60) * 100) / 100}</strong></td><td></td><td></td>`;
   table.appendChild(totalTr);
 
   return table;
@@ -942,16 +990,39 @@ async function loadSummary() {
   container.innerHTML = '<div class="loading">Loading events...</div>';
   setupScrollMemory();
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    if (!tabs[0]) {
+      container.replaceChildren(
+        createEmptyState(
+          'No active calendar tab',
+          'Open Google Calendar in Week view, then refresh this panel.',
+          '↗'
+        )
+      );
+      updateSummaryMetrics();
+      return;
+    }
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
       container.innerHTML = '';
       if (chrome.runtime.lastError) {
-        container.innerHTML =
-          '<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>';
+        container.replaceChildren(
+          createEmptyState(
+            'Could not read this tab',
+            'Open Google Calendar in Week view, then press Refresh.',
+            '↗'
+          )
+        );
+        updateSummaryMetrics();
         return;
       }
       if (!Array.isArray(events) || events.length === 0) {
-        container.innerHTML =
-          '<b>No events found! Make sure you are in Week View and have visible events.</b>';
+        container.replaceChildren(
+          createEmptyState(
+            'No meetings found',
+            'Make sure Google Calendar is open in Week view and events are visible.',
+            '○'
+          )
+        );
+        updateSummaryMetrics();
         return;
       }
       const { projects = [] } = await storage.get('projects');
@@ -960,6 +1031,7 @@ async function loadSummary() {
         'everhourEntries',
         'meetingListScrollTop'
       ]);
+      updateSummaryMetrics(events, map);
       const unassignedOnly = document.getElementById('unassigned-filter')?.checked || false;
 
       if (filter === 'week') {
@@ -970,14 +1042,22 @@ async function loadSummary() {
         const dayIdx = JS_DAY_IDX[filter];
         const filteredEvents = events.filter((ev) => ev.dayOfWeek === dayIdx);
         if (!filteredEvents.length) {
-          container.innerHTML = `<b>No meetings for ${DAYS_LABEL[DAYS_EN.indexOf(filter)]}.</b>`;
+          const dayLabel = DAYS_LABEL[DAYS_EN.indexOf(filter)];
+          container.replaceChildren(
+            createEmptyState(
+              `No meetings for ${dayLabel}`,
+              'Choose another day or return to the full week.',
+              '○'
+            )
+          );
+          updateSummaryMetrics([], map);
           return;
         }
         const label = document.createElement('div');
-        label.style.margin = '10px 0 6px 0';
-        label.style.fontWeight = 'bold';
+        label.className = 'day-label';
         label.textContent = DAYS_LABEL[DAYS_EN.indexOf(filter)];
         container.appendChild(label);
+        updateSummaryMetrics(filteredEvents, map);
         container.appendChild(
           buildSummaryTable(filteredEvents, projects, map, everhourEntries, unassignedOnly)
         );
@@ -1005,15 +1085,36 @@ async function loadProjectHours() {
   const container = document.getElementById('project-hours-table');
   container.innerHTML = '<div class="loading">Loading project hours...</div>';
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    if (!tabs[0]) {
+      container.replaceChildren(
+        createEmptyState(
+          'No active calendar tab',
+          'Open Google Calendar in Week view, then return here.',
+          '↗'
+        )
+      );
+      return;
+    }
     chrome.tabs.sendMessage(tabs[0].id, 'get_week_events', async (events) => {
       container.innerHTML = '';
       if (chrome.runtime.lastError) {
-        container.innerHTML =
-          '<b>Could not connect to Google Calendar.<br>Open Google Calendar in a tab, switch to Week View, and try again.</b>';
+        container.replaceChildren(
+          createEmptyState(
+            'Could not read this tab',
+            'Open Google Calendar in Week view, then try again.',
+            '↗'
+          )
+        );
         return;
       }
       if (!Array.isArray(events) || events.length === 0) {
-        container.innerHTML = '<b>No events found!</b>';
+        container.replaceChildren(
+          createEmptyState(
+            'No project hours yet',
+            'Assign calendar meetings to projects to see the breakdown.',
+            '○'
+          )
+        );
         return;
       }
       const { projects = [] } = await storage.get('projects');
@@ -1029,6 +1130,16 @@ async function loadProjectHours() {
         const rows = Object.entries(totals)
           .map(([project, mins]) => [project, Math.round((mins / 60) * 100) / 100])
           .sort((a, b) => b[1] - a[1]);
+        if (!rows.length) {
+          container.replaceChildren(
+            createEmptyState(
+              'No assigned meetings',
+              'Assign projects in the Meetings tab to build this breakdown.',
+              '○'
+            )
+          );
+          return;
+        }
         const totalHours = rows.reduce((sum, [, h]) => sum + h, 0);
         const table = document.createElement('table');
         const header = document.createElement('tr');
@@ -1059,7 +1170,14 @@ async function loadProjectHours() {
         const dayIdx = JS_DAY_IDX[filter];
         const filteredEvents = events.filter((ev) => ev.dayOfWeek === dayIdx);
         if (!filteredEvents.length) {
-          container.innerHTML = `<b>No project hours for ${DAYS_LABEL[DAYS_EN.indexOf(filter)]}.</b>`;
+          const dayLabel = DAYS_LABEL[DAYS_EN.indexOf(filter)];
+          container.replaceChildren(
+            createEmptyState(
+              `No project hours for ${dayLabel}`,
+              'Choose another day or return to the full week.',
+              '○'
+            )
+          );
           return;
         }
         const totals = {};
@@ -1072,10 +1190,19 @@ async function loadProjectHours() {
         const rows = Object.entries(totals)
           .map(([project, mins]) => [project, Math.round((mins / 60) * 100) / 100])
           .sort((a, b) => b[1] - a[1]);
+        if (!rows.length) {
+          container.replaceChildren(
+            createEmptyState(
+              'No assigned meetings',
+              'Assign a project to a meeting on this day first.',
+              '○'
+            )
+          );
+          return;
+        }
         const totalHoursDay = rows.reduce((sum, [, h]) => sum + h, 0);
         const label = document.createElement('div');
-        label.style.margin = '10px 0 6px 0';
-        label.style.fontWeight = 'bold';
+        label.className = 'day-label';
         label.textContent = DAYS_LABEL[DAYS_EN.indexOf(filter)];
         container.appendChild(label);
         const table = document.createElement('table');

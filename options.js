@@ -46,8 +46,10 @@ if (newProjectGroupInput) {
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach((t) => t.setAttribute?.('aria-selected', 'false'));
     document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
     tab.classList.add('active');
+    tab.setAttribute?.('aria-selected', 'true');
     document.getElementById(tab.dataset.tab).classList.add('active');
   });
 });
@@ -63,6 +65,13 @@ async function loadLogs() {
   const list = document.getElementById('log-list');
   if (!list) return;
   list.innerHTML = '';
+  if (!logs.length) {
+    const li = document.createElement('li');
+    li.className = 'empty-log';
+    li.textContent = 'No activity recorded yet.';
+    list.appendChild(li);
+    return;
+  }
   logs
     .slice()
     .reverse()
@@ -99,6 +108,17 @@ async function renderProjectList() {
   refreshGroupOptions(projects);
   const list = document.getElementById('project-list');
   list.innerHTML = '';
+  const count = document.getElementById('project-count');
+  if (count) count.textContent = projects.length;
+  const countLabel = document.getElementById('project-count-label');
+  if (countLabel) countLabel.textContent = projects.length === 1 ? 'project' : 'projects';
+  if (!projects.length) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-state project-empty-state';
+    empty.textContent = 'No projects yet. Add your first project above.';
+    list.appendChild(empty);
+    return;
+  }
   const groupBounds = {};
   projects.forEach((p, i) => {
     const g = p.group || '';
@@ -189,13 +209,12 @@ async function renderProjectList() {
     } else {
       const kw = (proj.keywords || []).join(', ');
       const nameSpan = document.createElement('span');
+      nameSpan.className = 'project-name';
       nameSpan.textContent = proj.name;
       li.appendChild(nameSpan);
       if (kw) {
         const kwSpan = document.createElement('span');
-        kwSpan.style.marginLeft = '7px';
-        kwSpan.style.fontSize = '11px';
-        kwSpan.style.color = '#8c98ac';
+        kwSpan.className = 'project-keywords';
         kwSpan.textContent = `[${kw}]`;
         li.appendChild(kwSpan);
       }
@@ -441,11 +460,9 @@ async function runTaskSearch() {
     results.innerHTML = '';
     matches.forEach((task) => {
       const row = document.createElement('div');
-      row.style.cssText =
-        'padding:7px 8px;cursor:pointer;border-radius:4px;border-bottom:1px solid var(--border-light);';
-      row.innerHTML = `<span style="font-weight:500;">${escapeHtml(task.name)}</span><br><span style="font-size:11px;color:#888;">${escapeHtml(task.projectName)} · ID: <code>${escapeHtml(String(task.id))}</code></span>`;
-      row.onmouseenter = () => (row.style.background = 'var(--bg-hover, #f0f4ff)');
-      row.onmouseleave = () => (row.style.background = '');
+      row.style.cssText = '';
+      row.className = 'task-result';
+      row.innerHTML = `<strong>${escapeHtml(task.name)}</strong><br><span class="task-result-meta">${escapeHtml(task.projectName)} · ID: <code>${escapeHtml(String(task.id))}</code></span>`;
       row.onclick = () => {
         if (taskSearchTargetInput) {
           const el = document.getElementById(taskSearchTargetInput);
@@ -473,6 +490,10 @@ function closeTaskSearch() {
   if (overlay) overlay.style.display = 'none';
 }
 
+document.addEventListener?.('keydown', (e) => {
+  if (e.key === 'Escape') closeTaskSearch();
+});
+
 const searchTaskNewBtn = document.getElementById('search-task-new');
 if (searchTaskNewBtn) searchTaskNewBtn.onclick = () => openTaskSearch('new-project-task');
 
@@ -495,6 +516,13 @@ if (taskSearchOverlay)
   });
 
 // Add new project
+function setProjectFormStatus(message, type = '') {
+  const status = document.getElementById('project-form-status');
+  if (!status) return;
+  status.textContent = message;
+  status.className = `form-status${type ? ` ${type}` : ''}`;
+}
+
 document.getElementById('add-project').onclick = async () => {
   const inp = document.getElementById('new-project');
   const color = document.getElementById('new-project-color').value || '#42a5f5';
@@ -506,9 +534,18 @@ document.getElementById('add-project').onclick = async () => {
   const taskId = document.getElementById('new-project-task').value.trim();
   const group = document.getElementById('new-project-group').value.trim();
   const name = inp.value.trim();
-  if (!name) return;
+  if (!name) {
+    setProjectFormStatus('Enter a project name.', 'error');
+    inp.focus?.();
+    return;
+  }
   let { projects = [] } = await storage.get('projects');
-  if (!projects.find((p) => p.name === name)) {
+  const duplicate = projects.some((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (duplicate) {
+    setProjectFormStatus('A project with this name already exists.', 'error');
+    return;
+  }
+  if (!duplicate) {
     const newProject = { name, color, keywords: kwds, taskId, group };
     const normalizedGroup = group || '';
     const lastInGroup = [...projects]
@@ -528,7 +565,12 @@ document.getElementById('add-project').onclick = async () => {
   document.getElementById('new-project-keywords').value = '';
   document.getElementById('new-project-task').value = '';
   document.getElementById('new-project-group').value = '';
+  setProjectFormStatus('Project added.');
 };
+
+document.getElementById('new-project').addEventListener?.('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('add-project').onclick();
+});
 
 // Export settings without API token
 async function exportSettings() {
@@ -561,7 +603,33 @@ async function importSettings() {
   try {
     data = JSON.parse(text);
   } catch (e) {
-    alert('Invalid JSON');
+    const status = document.getElementById('import-status');
+    if (status) {
+      status.textContent = 'This file is not valid JSON.';
+      status.className = 'form-status error';
+    } else {
+      alert('Invalid JSON');
+    }
+    return;
+  }
+  if (!data || Array.isArray(data) || typeof data !== 'object') {
+    const status = document.getElementById('import-status');
+    if (status) {
+      status.textContent = 'Choose an extension settings backup.';
+      status.className = 'form-status error';
+    }
+    return;
+  }
+  if (
+    data.projects !== undefined &&
+    (!Array.isArray(data.projects) ||
+      data.projects.some((project) => !project || typeof project.name !== 'string'))
+  ) {
+    const status = document.getElementById('import-status');
+    if (status) {
+      status.textContent = 'The projects in this backup are invalid.';
+      status.className = 'form-status error';
+    }
     return;
   }
   delete data.everhourToken;
@@ -570,6 +638,11 @@ async function importSettings() {
   await addLog('Imported settings');
   renderProjectList();
   fileInput.value = '';
+  const status = document.getElementById('import-status');
+  if (status) {
+    status.textContent = 'Backup imported.';
+    status.className = 'form-status';
+  }
 }
 document.getElementById('import-settings').onclick = importSettings;
 
@@ -577,7 +650,7 @@ document.getElementById('import-settings').onclick = importSettings;
 function updateDarkModeUI(isDark) {
   const btn = document.getElementById('dark-mode-toggle');
   const label = document.getElementById('dark-mode-label');
-  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+  if (btn) btn.textContent = isDark ? 'Use light mode' : 'Use dark mode';
   if (label) label.textContent = isDark ? 'Dark mode' : 'Light mode';
 }
 
@@ -593,6 +666,16 @@ document.getElementById('dark-mode-toggle').onclick = async () => {
   updateDarkModeUI(isDark);
   await addLog(isDark ? 'Dark mode enabled' : 'Dark mode disabled');
 };
+
+const tokenVisibilityButton = document.getElementById('toggle-token-visibility');
+if (tokenVisibilityButton) {
+  tokenVisibilityButton.onclick = () => {
+    const input = document.getElementById('everhour-token');
+    const reveal = input.type === 'password';
+    input.type = reveal ? 'text' : 'password';
+    tokenVisibilityButton.textContent = reveal ? 'Hide' : 'Show';
+  };
+}
 
 // Init
 initDarkMode();

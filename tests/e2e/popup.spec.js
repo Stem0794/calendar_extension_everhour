@@ -57,7 +57,7 @@ function stubChrome({ events, projects, meetingProjectMap, extra }) {
       onMessage: { addListener: () => {} }
     },
     tabs: {
-      query: (_opts, cb) => cb([{ id: 1 }]),
+      query: (_opts, cb) => cb(extra?.noActiveTab ? [] : [{ id: 1 }]),
       sendMessage: (_id, msg, cb) => {
         if (msg === 'get_week_events') cb(events);
         else cb([]);
@@ -68,7 +68,9 @@ function stubChrome({ events, projects, meetingProjectMap, extra }) {
 
 async function openPopup(events, projects, meetingProjectMap, extra) {
   const browser = await chromium.launch({ headless: true, args: BROWSER_ARGS });
-  const page = await browser.newContext().then((ctx) => ctx.newPage());
+  const page = await browser
+    .newContext({ viewport: { width: 420, height: 860 } })
+    .then((ctx) => ctx.newPage());
   await page.addInitScript(stubChrome, { events, projects, meetingProjectMap, extra: extra || {} });
   await page.goto(popupFile);
   return { browser, page };
@@ -90,6 +92,10 @@ test('popup summary and hours tabs render data', async () => {
 
   // Summary tab shows meeting
   await expect(page.getByText('Planning')).toBeVisible({ timeout: 8000 });
+  await page.screenshot({
+    path: path.join(screenshotDir, 'popup-meetings.png'),
+    fullPage: true
+  });
 
   // Hours tab shows project totals with percentage
   await page.locator('.tab', { hasText: 'Project Hours' }).click();
@@ -210,6 +216,35 @@ test('summary tab shows empty message for day with no meetings', async () => {
   await expect(page.locator('#meeting-list')).toContainText('No meetings for Thursday', {
     timeout: 6000
   });
+
+  await browser.close();
+});
+
+test('unassigned-only total excludes hidden assigned meetings', async () => {
+  const events = [
+    { title: 'Assigned meeting', duration: 120, date: '2023-09-25', dayOfWeek: 1 },
+    { title: 'Needs project', duration: 30, date: '2023-09-25', dayOfWeek: 1 }
+  ];
+  const projects = [{ name: 'Project A', color: '#ff0000' }];
+  const meetingProjectMap = { 'Assigned meeting': 'Project A' };
+
+  const { browser, page } = await openPopup(events, projects, meetingProjectMap);
+  await page.check('#unassigned-filter');
+
+  await expect(page.getByText('Needs project')).toBeVisible();
+  await expect(page.getByText('Assigned meeting')).not.toBeVisible();
+  await expect(page.locator('.total-row td').nth(1)).toHaveText('0.5');
+
+  await browser.close();
+});
+
+test('shows a useful empty state when there is no active browser tab', async () => {
+  const { browser, page } = await openPopup([], [], {}, { noActiveTab: true });
+
+  await expect(page.getByText('No active calendar tab')).toBeVisible({ timeout: 5000 });
+  await expect(
+    page.getByText('Open Google Calendar in Week view, then refresh this panel.')
+  ).toBeVisible();
 
   await browser.close();
 });
@@ -423,6 +458,10 @@ test('dark mode is applied on load when stored preference is true', async () => 
 
   // initDarkMode() reads storage and adds 'dark' class to body
   await expect(page.locator('body')).toHaveClass(/dark/, { timeout: 5000 });
+  await page.screenshot({
+    path: path.join(screenshotDir, 'popup-dark.png'),
+    fullPage: true
+  });
 
   await browser.close();
 });
