@@ -105,7 +105,8 @@ https://github.com/Stem0794/calendar_extension_everhour
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
-| 4.2.1 | 2026-07-30 | Redesigned side panel and settings UX; improved responsive and dark-mode layouts; fixed suggested-entry logging, filtered totals, empty-tab handling, duplicate project validation, and backup validation. | Ready to upload |
+| 4.3.0 | 2026-07-30 | Redesigned side panel and settings UX; improved responsive and dark-mode layouts; fixed suggested-entry logging, filtered totals, empty-tab handling, duplicate project validation, and backup validation. | Ready to upload |
+| 4.2.1 | 2026-06-29 | Allow suggested entries to be logged directly without reselecting their project. | Superseded |
 | 4.2.0 | 2026-06-04 | Prepare for Chrome Web Store update. | Draft |
 | 4.1.0 | 2026-06-03 | Previous release. | Published |
 

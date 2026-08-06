@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Weekly Calendar Project Tracker",
-  "version": "4.2.1",
+  "version": "4.3.0",
   "description": "Track, color-code, and export your Google Calendar meetings and project hours by week or day.",
   "permissions": ["activeTab", "storage", "sidePanel", "notifications", "alarms"],
   "commands": {
